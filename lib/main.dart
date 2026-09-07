@@ -39,59 +39,6 @@ class TasklyApp extends StatelessWidget {
 // 認証状態を監視
 // ============================================================
 
-class AuthGate extends StatefulWidget {
-  const AuthGate({super.key});
-
-  @override
-  State<AuthGate> createState() => _AuthGateState();
-}
-
-class _AuthGateState extends State<AuthGate> {
-  late final StreamSubscription<AuthState> _authSubscription;
-
-  Session? session;
-
-  @override
-  void initState() {
-    super.initState();
-
-    session =
-        Supabase.instance.client.auth.currentSession;
-
-    _authSubscription = Supabase
-        .instance
-        .client
-        .auth
-        .onAuthStateChange
-        .listen((data) {
-      if (!mounted) return;
-
-      setState(() {
-        session = data.session;
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _authSubscription.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (session != null) {
-      return const HomePage();
-    }
-
-    return const AuthPage();
-  }
-}
-
-// ============================================================
-// Magic Link ログイン
-// ============================================================
-
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
 
@@ -108,9 +55,7 @@ class _AuthPageState extends State<AuthPage> {
     final email = emailController.text.trim();
 
     if (email.isEmpty) {
-      showMessage(
-        'メールアドレスを入力してください',
-      );
+      showMessage('メールアドレスを入力してください');
       return;
     }
 
@@ -122,23 +67,19 @@ class _AuthPageState extends State<AuthPage> {
       await Supabase.instance.client.auth.signInWithOtp(
         email: email,
 
-        // 新規ユーザーを自動作成しない
+        // 新規ユーザー登録は禁止
         shouldCreateUser: false,
 
-        // GitHub Pages
-        emailRedirectTo:
-            'https://windsscoreyou-droid.github.io/taskly/',
+        emailRedirectTo: kIsWeb
+            ? 'https://windsscoreyou-droid.github.io/taskly/'
+            : 'io.taskly.app://login-callback/',
       );
 
       if (!mounted) return;
 
-      TextInput.finishAutofillContext(
-        shouldSave: true,
-      );
-
       showMessage(
         'ログイン用のメールを送信しました。\n'
-        'メールを確認して、ログインリンクを押してください。',
+        'メールを確認して、リンクを押してください。',
       );
 
       emailController.clear();
@@ -146,14 +87,13 @@ class _AuthPageState extends State<AuthPage> {
       if (!mounted) return;
 
       showMessage(
-        'メール送信に失敗しました\n'
-        '${e.message}',
+        'メールの送信に失敗しました\n${e.message}',
       );
     } catch (e) {
       if (!mounted) return;
 
       showMessage(
-        'エラーが発生しました: $e',
+        'エラーが発生しました\n$e',
       );
     } finally {
       if (mounted) {
@@ -191,106 +131,89 @@ class _AuthPageState extends State<AuthPage> {
               constraints: const BoxConstraints(
                 maxWidth: 420,
               ),
-              child: AutofillGroup(
-                child: Column(
-                  children: [
-                    const Icon(
-                      Icons.check_circle_outline,
-                      size: 80,
+              child: Column(
+                children: [
+                  const Icon(
+                    Icons.check_circle_outline,
+                    size: 80,
+                  ),
+                  const SizedBox(height: 16),
+
+                  const Text(
+                    'Taskly',
+                    style: TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
                     ),
+                  ),
 
-                    const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
-                    const Text(
-                      'Taskly',
-                      style: TextStyle(
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  const Text(
+                    'メールアドレスでログイン',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
                     ),
+                  ),
 
-                    const SizedBox(height: 12),
+                  const SizedBox(height: 8),
 
-                    const Text(
-                      'メールアドレスでログイン',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                      ),
+                  const Text(
+                    '登録済みのメールアドレスを入力すると\n'
+                    'ログイン用リンクを送信します。',
+                    textAlign: TextAlign.center,
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  TextField(
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) {
+                      if (!isLoading) {
+                        submit();
+                      }
+                    },
+                    decoration: const InputDecoration(
+                      labelText: 'メールアドレス',
+                      hintText: 'example@gmail.com',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.email_outlined),
                     ),
+                  ),
 
-                    const SizedBox(height: 8),
+                  const SizedBox(height: 24),
 
-                    const Text(
-                      'メールアドレスを入力すると\n'
-                      'ログイン用リンクを送信します。',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 14,
-                      ),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: FilledButton(
+                      onPressed: isLoading ? null : submit,
+                      child: isLoading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(),
+                            )
+                          : const Text(
+                              'ログイン用メールを送信',
+                              style: TextStyle(fontSize: 17),
+                            ),
                     ),
+                  ),
 
-                    const SizedBox(height: 32),
+                  const SizedBox(height: 20),
 
-                    TextField(
-                      controller: emailController,
-                      keyboardType:
-                          TextInputType.emailAddress,
-                      autofillHints: const [
-                        AutofillHints.email,
-                      ],
-                      textInputAction:
-                          TextInputAction.done,
-                      onSubmitted: (_) {
-                        if (!isLoading) {
-                          submit();
-                        }
-                      },
-                      decoration: const InputDecoration(
-                        labelText: 'メールアドレス',
-                        hintText: 'example@gmail.com',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(
-                          Icons.email_outlined,
-                        ),
-                      ),
+                  const Text(
+                    'パスワードは必要ありません。',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey,
                     ),
-
-                    const SizedBox(height: 24),
-
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: FilledButton(
-                        onPressed:
-                            isLoading ? null : submit,
-                        child: isLoading
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child:
-                                    CircularProgressIndicator(),
-                              )
-                            : const Text(
-                                'ログイン用メールを送信',
-                                style: TextStyle(
-                                  fontSize: 17,
-                                ),
-                              ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    const Text(
-                      'パスワードは必要ありません。',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
