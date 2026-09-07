@@ -254,6 +254,7 @@ class _MfaRouterState extends State<MfaRouter> {
 
 // ============================================================
 // ログイン画面
+// Android Google パスワードマネージャー対応版
 // ============================================================
 
 class AuthPage extends StatefulWidget {
@@ -267,8 +268,15 @@ class _AuthPageState extends State<AuthPage> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
+  final emailFocusNode = FocusNode();
+  final passwordFocusNode = FocusNode();
+
   bool isLoading = false;
   bool obscurePassword = true;
+
+  // ------------------------------------------------------------
+  // ログイン
+  // ------------------------------------------------------------
 
   Future<void> submit() async {
     final email = emailController.text.trim();
@@ -276,11 +284,13 @@ class _AuthPageState extends State<AuthPage> {
 
     if (email.isEmpty) {
       showMessage('メールアドレスを入力してください');
+      emailFocusNode.requestFocus();
       return;
     }
 
     if (password.isEmpty) {
       showMessage('パスワードを入力してください');
+      passwordFocusNode.requestFocus();
       return;
     }
 
@@ -308,6 +318,11 @@ class _AuthPageState extends State<AuthPage> {
       debugPrint(
         'Session exists: ${response.session != null}',
       );
+
+      // Androidの自動入力セッションを終了
+      // Google パスワード マネージャーに
+      // ログイン情報を保存するきっかけになります。
+      TextInput.finishAutofillContext();
 
       if (!mounted) return;
 
@@ -340,6 +355,10 @@ class _AuthPageState extends State<AuthPage> {
     }
   }
 
+  // ------------------------------------------------------------
+  // メッセージ
+  // ------------------------------------------------------------
+
   void showMessage(String message) {
     if (!mounted) return;
 
@@ -350,12 +369,24 @@ class _AuthPageState extends State<AuthPage> {
     );
   }
 
+  // ------------------------------------------------------------
+  // dispose
+  // ------------------------------------------------------------
+
   @override
   void dispose() {
     emailController.dispose();
     passwordController.dispose();
+
+    emailFocusNode.dispose();
+    passwordFocusNode.dispose();
+
     super.dispose();
   }
+
+  // ------------------------------------------------------------
+  // 画面
+  // ------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -368,139 +399,194 @@ class _AuthPageState extends State<AuthPage> {
               constraints: const BoxConstraints(
                 maxWidth: 420,
               ),
-              child: Column(
-                children: [
-                  const Icon(
-                    Icons.check_circle_outline,
-                    size: 80,
-                  ),
-                  const SizedBox(height: 16),
-
-                  const Text(
-                    'Taskly',
-                    style: TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
+              child: AutofillGroup(
+                child: Column(
+                  children: [
+                    const Icon(
+                      Icons.check_circle_outline,
+                      size: 80,
                     ),
-                  ),
 
-                  const SizedBox(height: 12),
+                    const SizedBox(height: 16),
 
-                  const Text(
-                    'ログイン',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  const Text(
-                    '登録済みのメールアドレスと\n'
-                    'パスワードでログインしてください。',
-                    textAlign: TextAlign.center,
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  TextField(
-                    controller: emailController,
-                    keyboardType:
-                        TextInputType.emailAddress,
-                    textInputAction:
-                        TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: 'メールアドレス',
-                      hintText: 'example@gmail.com',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(
-                        Icons.email_outlined,
+                    const Text(
+                      'Taskly',
+                      style: TextStyle(
+                        fontSize: 36,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
 
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 12),
 
-                  TextField(
-                    controller: passwordController,
-                    obscureText: obscurePassword,
-                    textInputAction:
-                        TextInputAction.done,
-                    onSubmitted: (_) {
-                      if (!isLoading) {
-                        submit();
-                      }
-                    },
-                    decoration: InputDecoration(
-                      labelText: 'パスワード',
-                      border:
-                          const OutlineInputBorder(),
-                      prefixIcon: const Icon(
-                        Icons.lock_outline,
+                    const Text(
+                      'ログイン',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
                       ),
-                      suffixIcon: IconButton(
-                        onPressed: () {
-                          setState(() {
-                            obscurePassword =
-                                !obscurePassword;
-                          });
-                        },
-                        icon: Icon(
-                          obscurePassword
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    const Text(
+                      '登録済みのメールアドレスと\n'
+                      'パスワードでログインしてください。',
+                      textAlign: TextAlign.center,
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // ------------------------------------------------
+                    // メールアドレス
+                    // Google パスワードマネージャー対応
+                    // ------------------------------------------------
+
+                    TextField(
+                      controller: emailController,
+                      focusNode: emailFocusNode,
+
+                      keyboardType:
+                          TextInputType.emailAddress,
+
+                      textInputAction:
+                          TextInputAction.next,
+
+                      // ★重要
+                      autofillHints: const [
+                        AutofillHints.username,
+                        AutofillHints.email,
+                      ],
+
+                      onEditingComplete: () {
+                        passwordFocusNode.requestFocus();
+                      },
+
+                      decoration: const InputDecoration(
+                        labelText: 'メールアドレス',
+                        hintText: 'example@gmail.com',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(
+                          Icons.email_outlined,
                         ),
                       ),
                     ),
-                  ),
 
-                  const SizedBox(height: 24),
+                    const SizedBox(height: 16),
 
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: FilledButton(
-                      onPressed:
-                          isLoading ? null : submit,
-                      child: isLoading
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child:
-                                  CircularProgressIndicator(),
-                            )
-                          : const Text(
-                              'ログイン',
-                              style: TextStyle(
-                                fontSize: 17,
+                    // ------------------------------------------------
+                    // パスワード
+                    // Google パスワードマネージャー対応
+                    // ------------------------------------------------
+
+                    TextField(
+                      controller: passwordController,
+                      focusNode: passwordFocusNode,
+
+                      obscureText: obscurePassword,
+
+                      keyboardType:
+                          TextInputType.visiblePassword,
+
+                      textInputAction:
+                          TextInputAction.done,
+
+                      // ★重要
+                      autofillHints: const [
+                        AutofillHints.password,
+                      ],
+
+                      onSubmitted: (_) {
+                        if (!isLoading) {
+                          submit();
+                        }
+                      },
+
+                      decoration: InputDecoration(
+                        labelText: 'パスワード',
+
+                        border:
+                            const OutlineInputBorder(),
+
+                        prefixIcon: const Icon(
+                          Icons.lock_outline,
+                        ),
+
+                        suffixIcon: IconButton(
+                          onPressed: () {
+                            setState(() {
+                              obscurePassword =
+                                  !obscurePassword;
+                            });
+                          },
+
+                          icon: Icon(
+                            obscurePassword
+                                ? Icons
+                                    .visibility_outlined
+                                : Icons
+                                    .visibility_off_outlined,
+                          ),
+
+                          tooltip: obscurePassword
+                              ? 'パスワードを表示'
+                              : 'パスワードを隠す',
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // ------------------------------------------------
+                    // ログインボタン
+                    // ------------------------------------------------
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: FilledButton(
+                        onPressed:
+                            isLoading ? null : submit,
+
+                        child: isLoading
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child:
+                                    CircularProgressIndicator(),
+                              )
+                            : const Text(
+                                'ログイン',
+                                style: TextStyle(
+                                  fontSize: 17,
+                                ),
                               ),
-                            ),
+                      ),
                     ),
-                  ),
 
-                  const SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
-                  const Text(
-                    'ログイン時にメールは送信されません。',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey,
+                    const Text(
+                      'ログイン時にメールは送信されません。',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey,
+                      ),
                     ),
-                  ),
 
-                  const SizedBox(height: 4),
+                    const SizedBox(height: 4),
 
-                  const Text(
-                    'このアプリでは新規アカウント登録はできません。',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey,
+                    const Text(
+                      'このアプリでは新規アカウント登録はできません。',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
