@@ -1,4 +1,3 @@
-
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -116,16 +115,18 @@ class _AuthPageState extends State<AuthPage> {
       return;
     }
 
-    if (password.length < 8) {
-      showMessage('パスワードは8文字以上にしてください');
-      return;
-    }
-
     setState(() {
       isLoading = true;
     });
 
     try {
+      // ========================================================
+      // メールアドレス＋パスワードでログイン
+      //
+      // Magic Link / OTP は使用しません。
+      // そのためログイン時にメールは送信されません。
+      // ========================================================
+
       await Supabase.instance.client.auth.signInWithPassword(
         email: email,
         password: password,
@@ -137,8 +138,14 @@ class _AuthPageState extends State<AuthPage> {
     } on AuthException catch (e) {
       if (!mounted) return;
 
+      String message = e.message;
+
+      if (e.message.toLowerCase().contains('invalid login')) {
+        message = 'メールアドレスまたはパスワードが違います';
+      }
+
       showMessage(
-        'ログインに失敗しました\n${e.message}',
+        'ログインに失敗しました\n$message',
       );
     } catch (e) {
       if (!mounted) return;
@@ -220,6 +227,10 @@ class _AuthPageState extends State<AuthPage> {
 
                   const SizedBox(height: 32),
 
+                  // ==================================================
+                  // メールアドレス
+                  // ==================================================
+
                   TextField(
                     controller: emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -235,6 +246,10 @@ class _AuthPageState extends State<AuthPage> {
                   ),
 
                   const SizedBox(height: 16),
+
+                  // ==================================================
+                  // パスワード
+                  // ==================================================
 
                   TextField(
                     controller: passwordController,
@@ -254,8 +269,7 @@ class _AuthPageState extends State<AuthPage> {
                       suffixIcon: IconButton(
                         onPressed: () {
                           setState(() {
-                            obscurePassword =
-                                !obscurePassword;
+                            obscurePassword = !obscurePassword;
                           });
                         },
                         icon: Icon(
@@ -269,18 +283,20 @@ class _AuthPageState extends State<AuthPage> {
 
                   const SizedBox(height: 24),
 
+                  // ==================================================
+                  // ログインボタン
+                  // ==================================================
+
                   SizedBox(
                     width: double.infinity,
                     height: 52,
                     child: FilledButton(
-                      onPressed:
-                          isLoading ? null : submit,
+                      onPressed: isLoading ? null : submit,
                       child: isLoading
                           ? const SizedBox(
                               width: 24,
                               height: 24,
-                              child:
-                                  CircularProgressIndicator(),
+                              child: CircularProgressIndicator(),
                             )
                           : const Text(
                               'ログイン',
@@ -292,6 +308,17 @@ class _AuthPageState extends State<AuthPage> {
                   ),
 
                   const SizedBox(height: 20),
+
+                  const Text(
+                    'ログイン時にメールは送信されません。',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey,
+                    ),
+                  ),
+
+                  const SizedBox(height: 4),
 
                   const Text(
                     'このアプリでは新規アカウント登録はできません。',
