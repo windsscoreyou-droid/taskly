@@ -102,6 +102,7 @@ class _AuthPageState extends State<AuthPage> {
             'メールアドレスの確認が必要です。\n'
             '受信した確認メールのリンクを押してからログインしてください。',
           );
+
           return;
         }
 
@@ -334,8 +335,13 @@ class _HomePageState extends State<HomePage> {
 
       if (user == null) {
         if (mounted) {
+          setState(() {
+            isLoading = false;
+          });
+
           showMessage('ログインユーザーが取得できません');
         }
+
         return;
       }
 
@@ -355,6 +361,24 @@ class _HomePageState extends State<HomePage> {
         );
         isLoading = false;
       });
+    } on PostgrestException catch (e) {
+      print('タスク読み込みエラー');
+      print('message: ${e.message}');
+      print('code: ${e.code}');
+      print('details: ${e.details}');
+      print('hint: ${e.hint}');
+
+      if (!mounted) return;
+
+      setState(() {
+        isLoading = false;
+      });
+
+      showMessage(
+        'タスクの読み込みに失敗しました\n'
+        'code: ${e.code}\n'
+        '${e.message}',
+      );
     } catch (e) {
       print('タスク読み込みエラー: $e');
 
@@ -722,19 +746,19 @@ class _HomePageState extends State<HomePage> {
         ),
         ...sectionTasks.map((task) {
           final taskId =
-              task['id'] as String;
+              task['id'].toString();
 
           final taskTitle =
-              task['title'] as String;
+              task['title']?.toString() ?? '';
 
           final completed =
-              task['completed'] as bool;
+              task['completed'] == true;
 
           final startDate =
-              task['start_date'] as String?;
+              task['start_date']?.toString();
 
           final endDate =
-              task['end_date'] as String?;
+              task['end_date']?.toString();
 
           final currentStatus =
               task['status']?.toString() ??
@@ -1815,6 +1839,7 @@ class _CalendarPageState
             isLoading = false;
           });
         }
+
         return;
       }
 
