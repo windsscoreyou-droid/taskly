@@ -1,0 +1,18 @@
+test@example.com
+aaaaaaaa
+
+
+
+
+
+https://mobmajamwnxqtrwrsihj.supabase.co
+sb_publishable_MPCFZfn-qNieoL1kBNeFrg_fjJlSWEE
+
+
+
+
+color: task['status'] == 'doing'
+    ? Colors.blue.shade300
+    : task['status'] == 'done'
+        ? Colors.grey.shade900
+        : Colors.grey.shade400,
