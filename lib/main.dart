@@ -40,9 +40,22 @@ class AuthGate extends StatelessWidget {
     final session =
         Supabase.instance.client.auth.currentSession;
 
-    if (session != null) {
-      return const HomePage();
-    }
+@override
+Widget build(BuildContext context) {
+  final session =
+      Supabase.instance.client.auth.currentSession;
+
+  final user =
+      Supabase.instance.client.auth.currentUser;
+
+  if (session != null &&
+      user != null &&
+      user.emailConfirmedAt != null) {
+    return const HomePage();
+  }
+
+  return const AuthPage();
+}
 
     return const AuthPage();
   }
@@ -77,55 +90,69 @@ class _AuthPageState extends State<AuthPage> {
 
     try {
       if (isLogin) {
-        await Supabase.instance.client.auth.signInWithPassword(
-          email: email,
-          password: password,
-        );
+  final response =
+      await Supabase.instance.client.auth.signInWithPassword(
+    email: email,
+    password: password,
+  );
 
-        // Androidのパスワードマネージャーに
-        // 入力情報を保存できるようにAutofillを終了
-        TextInput.finishAutofillContext(
-          shouldSave: true,
-        );
+  final user = response.user;
 
-        if (!mounted) return;
+  // メール認証が完了しているか確認
+  if (user == null || user.emailConfirmedAt == null) {
+    await Supabase.instance.client.auth.signOut();
 
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => const HomePage(),
-          ),
-        );
-      } else {
-        await Supabase.instance.client.auth.signUp(
-          email: email,
-          password: password,
-        );
+    if (!mounted) return;
 
-        // 新規登録時もパスワード保存対象にする
-        TextInput.finishAutofillContext(
-          shouldSave: true,
-        );
-
-        if (!mounted) return;
-
-        showMessage('アカウントを作成しました');
-
-        setState(() {
-          isLogin = true;
-        });
-      }
-    } on AuthException catch (e) {
-      showMessage(e.message);
-    } catch (e) {
-      showMessage('エラーが発生しました: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
-    }
+    showMessage(
+      'メールアドレスの確認が必要です。\n'
+      '受信した確認メールのリンクを押してからログインしてください。',
+    );
+    return;
   }
+
+  TextInput.finishAutofillContext(
+    shouldSave: true,
+  );
+
+  if (!mounted) return;
+
+  Navigator.of(context).pushReplacement(
+    MaterialPageRoute(
+      builder: (_) => const HomePage(),
+    ),
+  );
+} else {
+  final response =
+      await Supabase.instance.client.auth.signUp(
+    email: email,
+    password: password,
+  );
+
+  TextInput.finishAutofillContext(
+    shouldSave: true,
+  );
+
+  if (!mounted) return;
+
+  if (response.user != null &&
+      response.session == null) {
+    showMessage(
+      '登録しました。\n'
+      '入力したメールアドレスに確認メールを送信しました。\n'
+      'メール内のリンクを押して認証してください。',
+    );
+  } else {
+    showMessage(
+      'アカウントを作成しました。\n'
+      'メールアドレスの確認が必要です。',
+    );
+  }
+
+  setState(() {
+    isLogin = true;
+  });
+}
 
   void showMessage(String message) {
     if (!mounted) return;
