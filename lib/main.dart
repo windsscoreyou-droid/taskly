@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -32,26 +35,62 @@ class TasklyApp extends StatelessWidget {
   }
 }
 
-class AuthGate extends StatelessWidget {
+// ============================================================
+// 認証状態を監視
+// ============================================================
+
+class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final session =
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  late final StreamSubscription<AuthState> _authSubscription;
+
+  Session? session;
+
+  @override
+  void initState() {
+    super.initState();
+
+    session =
         Supabase.instance.client.auth.currentSession;
 
-    final user =
-        Supabase.instance.client.auth.currentUser;
+    _authSubscription = Supabase
+        .instance
+        .client
+        .auth
+        .onAuthStateChange
+        .listen((data) {
+      if (!mounted) return;
 
-    if (session != null &&
-        user != null &&
-        user.emailConfirmedAt != null) {
+      setState(() {
+        session = data.session;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSubscription.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (session != null) {
       return const HomePage();
     }
 
     return const AuthPage();
   }
 }
+
+// ============================================================
+// Magic Link ログイン
+// ============================================================
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
@@ -62,18 +101,15 @@ class AuthPage extends StatefulWidget {
 
 class _AuthPageState extends State<AuthPage> {
   final emailController = TextEditingController();
-  final passwordController = TextEditingController();
 
-  bool isLogin = true;
   bool isLoading = false;
 
   Future<void> submit() async {
     final email = emailController.text.trim();
-    final password = passwordController.text;
 
-    if (email.isEmpty || password.isEmpty) {
+    if (email.isEmpty) {
       showMessage(
-        'メールアドレスとパスワードを入力してください',
+        'メールアドレスを入力してください',
       );
       return;
     }
@@ -83,76 +119,35 @@ class _AuthPageState extends State<AuthPage> {
     });
 
     try {
-      if (isLogin) {
-        final response =
-            await Supabase.instance.client.auth.signInWithPassword(
-          email: email,
-          password: password,
-        );
+      await Supabase.instance.client.auth.signInWithOtp(
+        email: email,
 
-        final user = response.user;
+        // 新規ユーザーを自動作成しない
+        shouldCreateUser: false,
 
-        // メール認証が完了しているか確認
-        if (user == null || user.emailConfirmedAt == null) {
-          await Supabase.instance.client.auth.signOut();
+        // GitHub Pages
+        emailRedirectTo:
+            'https://windsscoreyou-droid.github.io/taskly/',
+      );
 
-          if (!mounted) return;
+      if (!mounted) return;
 
-          showMessage(
-            'メールアドレスの確認が必要です。\n'
-            '受信した確認メールのリンクを押してからログインしてください。',
-          );
+      TextInput.finishAutofillContext(
+        shouldSave: true,
+      );
 
-          return;
-        }
+      showMessage(
+        'ログイン用のメールを送信しました。\n'
+        'メールを確認して、ログインリンクを押してください。',
+      );
 
-        TextInput.finishAutofillContext(
-          shouldSave: true,
-        );
-
-        if (!mounted) return;
-
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => const HomePage(),
-          ),
-        );
-      } else {
-        final response =
-            await Supabase.instance.client.auth.signUp(
-          email: email,
-          password: password,
-        );
-
-        TextInput.finishAutofillContext(
-          shouldSave: true,
-        );
-
-        if (!mounted) return;
-
-        if (response.user != null &&
-            response.session == null) {
-          showMessage(
-            '登録しました。\n'
-            '入力したメールアドレスに確認メールを送信しました。\n'
-            'メール内のリンクを押して認証してください。',
-          );
-        } else {
-          showMessage(
-            'アカウントを作成しました。\n'
-            'メールアドレスの確認が必要です。',
-          );
-        }
-
-        setState(() {
-          isLogin = true;
-        });
-      }
+      emailController.clear();
     } on AuthException catch (e) {
       if (!mounted) return;
 
       showMessage(
-        '認証に失敗しました\n${e.message}',
+        'メール送信に失敗しました\n'
+        '${e.message}',
       );
     } catch (e) {
       if (!mounted) return;
@@ -182,7 +177,6 @@ class _AuthPageState extends State<AuthPage> {
   @override
   void dispose() {
     emailController.dispose();
-    passwordController.dispose();
     super.dispose();
   }
 
@@ -204,7 +198,9 @@ class _AuthPageState extends State<AuthPage> {
                       Icons.check_circle_outline,
                       size: 80,
                     ),
+
                     const SizedBox(height: 16),
+
                     const Text(
                       'Taskly',
                       style: TextStyle(
@@ -212,34 +208,36 @@ class _AuthPageState extends State<AuthPage> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 40),
+
+                    const SizedBox(height: 12),
+
+                    const Text(
+                      'メールアドレスでログイン',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    const Text(
+                      'メールアドレスを入力すると\n'
+                      'ログイン用リンクを送信します。',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
 
                     TextField(
                       controller: emailController,
                       keyboardType:
                           TextInputType.emailAddress,
                       autofillHints: const [
-                        AutofillHints.username,
                         AutofillHints.email,
-                      ],
-                      textInputAction:
-                          TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'メールアドレス',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(
-                          Icons.email_outlined,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    TextField(
-                      controller: passwordController,
-                      obscureText: true,
-                      autofillHints: const [
-                        AutofillHints.password,
                       ],
                       textInputAction:
                           TextInputAction.done,
@@ -249,10 +247,11 @@ class _AuthPageState extends State<AuthPage> {
                         }
                       },
                       decoration: const InputDecoration(
-                        labelText: 'パスワード',
+                        labelText: 'メールアドレス',
+                        hintText: 'example@gmail.com',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(
-                          Icons.lock_outline,
+                          Icons.email_outlined,
                         ),
                       ),
                     ),
@@ -272,31 +271,22 @@ class _AuthPageState extends State<AuthPage> {
                                 child:
                                     CircularProgressIndicator(),
                               )
-                            : Text(
-                                isLogin
-                                    ? 'ログイン'
-                                    : '新規登録',
-                                style: const TextStyle(
+                            : const Text(
+                                'ログイン用メールを送信',
+                                style: TextStyle(
                                   fontSize: 17,
                                 ),
                               ),
                       ),
                     ),
 
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 20),
 
-                    TextButton(
-                      onPressed: isLoading
-                          ? null
-                          : () {
-                              setState(() {
-                                isLogin = !isLogin;
-                              });
-                            },
-                      child: Text(
-                        isLogin
-                            ? 'アカウントを持っていない？ 新規登録'
-                            : 'すでにアカウントを持っている？ ログイン',
+                    const Text(
+                      'パスワードは必要ありません。',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey,
                       ),
                     ),
                   ],
@@ -309,6 +299,10 @@ class _AuthPageState extends State<AuthPage> {
     );
   }
 }
+
+// ============================================================
+// ホーム
+// ============================================================
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -339,7 +333,9 @@ class _HomePageState extends State<HomePage> {
             isLoading = false;
           });
 
-          showMessage('ログインユーザーが取得できません');
+          showMessage(
+            'ログインユーザーが取得できません',
+          );
         }
 
         return;
@@ -454,7 +450,8 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    final name = result['title'] as String;
+    final name =
+        result['title'] as String;
 
     final startDate =
         result['start_date'] as DateTime?;
@@ -472,7 +469,9 @@ class _HomePageState extends State<HomePage> {
     if (startDate != null &&
         endDate != null &&
         endDate.isBefore(startDate)) {
-      showMessage('終了日は開始日以降にしてください');
+      showMessage(
+        '終了日は開始日以降にしてください',
+      );
       return;
     }
 
@@ -604,7 +603,9 @@ class _HomePageState extends State<HomePage> {
     if (startDate != null &&
         endDate != null &&
         endDate.isBefore(startDate)) {
-      showMessage('終了日は開始日以降にしてください');
+      showMessage(
+        '終了日は開始日以降にしてください',
+      );
       return;
     }
 
@@ -992,6 +993,10 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
+// ============================================================
+// タスク追加
+// ============================================================
+
 class AddTaskDialog extends StatefulWidget {
   final DateTime? initialDate;
 
@@ -1226,6 +1231,10 @@ class _AddTaskDialogState
   }
 }
 
+// ============================================================
+// タスク編集
+// ============================================================
+
 class _EditTaskDialog extends StatefulWidget {
   final String taskId;
   final String currentTitle;
@@ -1452,7 +1461,6 @@ class _EditTaskDialogState
           },
           child: const Text('キャンセル'),
         ),
-
         TextButton(
           onPressed: () async {
             final confirmed =
@@ -1535,7 +1543,6 @@ class _EditTaskDialogState
             ),
           ),
         ),
-
         FilledButton(
           onPressed: () {
             final title =
@@ -1564,6 +1571,10 @@ class _EditTaskDialogState
     );
   }
 }
+
+// ============================================================
+// カレンダー
+// ============================================================
 
 class CalendarPage extends StatefulWidget {
   const CalendarPage({
@@ -2935,8 +2946,7 @@ class _CalendarPageState
                               title,
                               maxLines: 1,
                               overflow:
-                                  TextOverflow
-                                      .ellipsis,
+                                  TextOverflow.ellipsis,
                               style:
                                   TextStyle(
                                 fontSize: 10,
@@ -3137,6 +3147,10 @@ class _CalendarPageState
     );
   }
 }
+
+// ============================================================
+// 曜日
+// ============================================================
 
 class _WeekdayCell extends StatelessWidget {
   final String text;
