@@ -6,10 +6,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-await Supabase.initialize(
-  url: 'https://mobmajamwnxqtrwrsih.supabase.co',
-  publishableKey: 'sb_publishable_MPCFZfn-qNieoL1kBNeFrg_fjJlSWEE',
-);
+  await Supabase.initialize(
+    url: 'https://mobmajamwnxqtrwrsih.supabase.co',
+    publishableKey: 'sb_publishable_MPCFZfn-qNieoL1kBNeFrg_fjJlSWEE',
+  );
 
   runApp(const TasklyApp());
 }
@@ -101,8 +101,6 @@ class _AuthGateState extends State<AuthGate> {
       });
       return;
     }
-
-    if (!mounted) return;
 
     setState(() {
       session = currentSession;
@@ -272,88 +270,75 @@ class _AuthPageState extends State<AuthPage> {
   bool isLoading = false;
   bool obscurePassword = true;
 
-Future<void> submit() async {
-  final email = emailController.text.trim();
-  final password = passwordController.text;
+  Future<void> submit() async {
+    final email = emailController.text.trim();
+    final password = passwordController.text;
 
-  if (email.isEmpty) {
-    showMessage('メールアドレスを入力してください');
-    return;
-  }
-
-  if (password.isEmpty) {
-    showMessage('パスワードを入力してください');
-    return;
-  }
-
-  if (isLoading) return;
-
-  setState(() {
-    isLoading = true;
-  });
-
-  try {
-    final client = Supabase.instance.client;
-
-    debugPrint('========== LOGIN START ==========');
-    debugPrint('Supabase URL: ${client.rest.url}');
-    debugPrint('Email: $email');
-
-    final response = await client.auth.signInWithPassword(
-      email: email,
-      password: password,
-    );
-
-    debugPrint('LOGIN SUCCESS');
-    debugPrint('User ID: ${response.user?.id}');
-    debugPrint('Session exists: ${response.session != null}');
-
-    if (!mounted) return;
-
-    showMessage('ログインしました');
-  } on AuthException catch (e) {
-    debugPrint('========== AUTH ERROR ==========');
-    debugPrint('message: ${e.message}');
-    debugPrint('statusCode: ${e.statusCode}');
-
-    if (!mounted) return;
-
-    String message = e.message;
-
-    if (e.message.toLowerCase().contains('invalid login')) {
-      message = 'メールアドレスまたはパスワードが違います';
+    if (email.isEmpty) {
+      showMessage('メールアドレスを入力してください');
+      return;
     }
 
-    showMessage(
-      'ログインに失敗しました\n$message',
-    );
-  } on ClientException catch (e) {
-    debugPrint('========== CLIENT ERROR ==========');
-    debugPrint('ClientException: $e');
+    if (password.isEmpty) {
+      showMessage('パスワードを入力してください');
+      return;
+    }
 
-    if (!mounted) return;
+    if (isLoading) return;
 
-    showMessage(
-      'Supabaseへの接続に失敗しました\n'
-      '$e',
-    );
-  } catch (e) {
-    debugPrint('========== UNKNOWN ERROR ==========');
-    debugPrint('$e');
+    setState(() {
+      isLoading = true;
+    });
 
-    if (!mounted) return;
+    try {
+      final client = Supabase.instance.client;
 
-    showMessage(
-      '予期しないエラーが発生しました\n$e',
-    );
-  } finally {
-    if (mounted) {
-      setState(() {
-        isLoading = false;
-      });
+      debugPrint('========== LOGIN START ==========');
+      debugPrint('Supabase URL: ${client.rest.url}');
+      debugPrint('Email: $email');
+
+      final response =
+          await client.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+
+      debugPrint('LOGIN SUCCESS');
+      debugPrint('User ID: ${response.user?.id}');
+      debugPrint(
+        'Session exists: ${response.session != null}',
+      );
+
+      if (!mounted) return;
+
+      showMessage('ログインしました');
+    } on AuthException catch (e) {
+      debugPrint('========== AUTH ERROR ==========');
+      debugPrint('message: ${e.message}');
+      debugPrint('statusCode: ${e.statusCode}');
+
+      if (!mounted) return;
+
+      showMessage(
+        'ログインエラー\n${e.message}',
+      );
+    } catch (e) {
+      debugPrint('========== LOGIN ERROR ==========');
+      debugPrint('$e');
+
+      if (!mounted) return;
+
+      showMessage(
+        'ログインエラー\n$e',
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
-}
 
   void showMessage(String message) {
     if (!mounted) return;
@@ -390,6 +375,7 @@ Future<void> submit() async {
                     size: 80,
                   ),
                   const SizedBox(height: 16),
+
                   const Text(
                     'Taskly',
                     style: TextStyle(
@@ -397,7 +383,9 @@ Future<void> submit() async {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+
                   const SizedBox(height: 12),
+
                   const Text(
                     'ログイン',
                     style: TextStyle(
@@ -405,17 +393,23 @@ Future<void> submit() async {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
+
                   const SizedBox(height: 8),
+
                   const Text(
                     '登録済みのメールアドレスと\n'
                     'パスワードでログインしてください。',
                     textAlign: TextAlign.center,
                   ),
+
                   const SizedBox(height: 32),
+
                   TextField(
                     controller: emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
+                    keyboardType:
+                        TextInputType.emailAddress,
+                    textInputAction:
+                        TextInputAction.next,
                     decoration: const InputDecoration(
                       labelText: 'メールアドレス',
                       hintText: 'example@gmail.com',
@@ -425,11 +419,14 @@ Future<void> submit() async {
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 16),
+
                   TextField(
                     controller: passwordController,
                     obscureText: obscurePassword,
-                    textInputAction: TextInputAction.done,
+                    textInputAction:
+                        TextInputAction.done,
                     onSubmitted: (_) {
                       if (!isLoading) {
                         submit();
@@ -437,7 +434,8 @@ Future<void> submit() async {
                     },
                     decoration: InputDecoration(
                       labelText: 'パスワード',
-                      border: const OutlineInputBorder(),
+                      border:
+                          const OutlineInputBorder(),
                       prefixIcon: const Icon(
                         Icons.lock_outline,
                       ),
@@ -456,7 +454,9 @@ Future<void> submit() async {
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 24),
+
                   SizedBox(
                     width: double.infinity,
                     height: 52,
@@ -478,7 +478,9 @@ Future<void> submit() async {
                             ),
                     ),
                   ),
+
                   const SizedBox(height: 20),
+
                   const Text(
                     'ログイン時にメールは送信されません。',
                     textAlign: TextAlign.center,
@@ -487,7 +489,9 @@ Future<void> submit() async {
                       color: Colors.grey,
                     ),
                   ),
+
                   const SizedBox(height: 4),
+
                   const Text(
                     'このアプリでは新規アカウント登録はできません。',
                     textAlign: TextAlign.center,
@@ -519,7 +523,8 @@ class MfaSetupPage extends StatefulWidget {
   });
 
   @override
-  State<MfaSetupPage> createState() => _MfaSetupPageState();
+  State<MfaSetupPage> createState() =>
+      _MfaSetupPageState();
 }
 
 class _MfaSetupPageState extends State<MfaSetupPage> {
@@ -541,7 +546,8 @@ class _MfaSetupPageState extends State<MfaSetupPage> {
     try {
       final client = Supabase.instance.client;
 
-      final response = await client.auth.mfa.enroll(
+      final response =
+          await client.auth.mfa.enroll(
         factorType: FactorType.totp,
         friendlyName: 'Taskly',
       );
@@ -553,7 +559,21 @@ class _MfaSetupPageState extends State<MfaSetupPage> {
         secret = response.totp?.secret;
         isLoading = false;
       });
+    } on AuthException catch (e) {
+      debugPrint('MFA登録エラー: ${e.message}');
+
+      if (!mounted) return;
+
+      setState(() {
+        isLoading = false;
+      });
+
+      showMessage(
+        'MFA登録の準備に失敗しました\n${e.message}',
+      );
     } catch (e) {
+      debugPrint('MFA登録エラー: $e');
+
       if (!mounted) return;
 
       setState(() {
@@ -579,6 +599,8 @@ class _MfaSetupPageState extends State<MfaSetupPage> {
       return;
     }
 
+    if (isVerifying) return;
+
     setState(() {
       isVerifying = true;
     });
@@ -586,7 +608,8 @@ class _MfaSetupPageState extends State<MfaSetupPage> {
     try {
       final client = Supabase.instance.client;
 
-      final challenge = await client.auth.mfa.challenge(
+      final challenge =
+          await client.auth.mfa.challenge(
         factorId: factorId!,
       );
 
@@ -622,6 +645,10 @@ class _MfaSetupPageState extends State<MfaSetupPage> {
     }
   }
 
+  Future<void> logout() async {
+    await Supabase.instance.client.auth.signOut();
+  }
+
   void showMessage(String message) {
     if (!mounted) return;
 
@@ -630,10 +657,6 @@ class _MfaSetupPageState extends State<MfaSetupPage> {
         content: Text(message),
       ),
     );
-  }
-
-  Future<void> logout() async {
-    await Supabase.instance.client.auth.signOut();
   }
 
   @override
@@ -671,7 +694,9 @@ class _MfaSetupPageState extends State<MfaSetupPage> {
                     Icons.security,
                     size: 72,
                   ),
+
                   const SizedBox(height: 20),
+
                   const Text(
                     '追加認証を設定してください',
                     style: TextStyle(
@@ -680,18 +705,24 @@ class _MfaSetupPageState extends State<MfaSetupPage> {
                     ),
                     textAlign: TextAlign.center,
                   ),
+
                   const SizedBox(height: 16),
+
                   const Text(
                     'Google Authenticatorなどの\n'
                     '認証アプリを使用してください。',
                     textAlign: TextAlign.center,
                   ),
+
                   const SizedBox(height: 24),
+
                   const Text(
                     '認証アプリに以下の秘密鍵を登録してください。',
                     textAlign: TextAlign.center,
                   ),
+
                   const SizedBox(height: 12),
+
                   SelectableText(
                     secret ?? '',
                     textAlign: TextAlign.center,
@@ -701,7 +732,9 @@ class _MfaSetupPageState extends State<MfaSetupPage> {
                       letterSpacing: 1.5,
                     ),
                   ),
+
                   const SizedBox(height: 8),
+
                   const Text(
                     '※この秘密鍵は他人に公開しないでください。',
                     textAlign: TextAlign.center,
@@ -710,12 +743,16 @@ class _MfaSetupPageState extends State<MfaSetupPage> {
                       color: Colors.red,
                     ),
                   ),
+
                   const SizedBox(height: 28),
+
                   TextField(
                     controller: codeController,
-                    keyboardType: TextInputType.number,
+                    keyboardType:
+                        TextInputType.number,
                     maxLength: 6,
-                    decoration: const InputDecoration(
+                    decoration:
+                        const InputDecoration(
                       labelText: '6桁の認証コード',
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(
@@ -723,7 +760,9 @@ class _MfaSetupPageState extends State<MfaSetupPage> {
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 16),
+
                   SizedBox(
                     width: double.infinity,
                     height: 52,
@@ -731,7 +770,12 @@ class _MfaSetupPageState extends State<MfaSetupPage> {
                       onPressed:
                           isVerifying ? null : verify,
                       child: isVerifying
-                          ? const CircularProgressIndicator()
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child:
+                                  CircularProgressIndicator(),
+                            )
                           : const Text(
                               '追加認証を設定',
                               style: TextStyle(
@@ -740,7 +784,9 @@ class _MfaSetupPageState extends State<MfaSetupPage> {
                             ),
                     ),
                   ),
+
                   const SizedBox(height: 16),
+
                   TextButton(
                     onPressed: logout,
                     child: const Text('ログアウト'),
@@ -774,7 +820,8 @@ class MfaVerifyPage extends StatefulWidget {
       _MfaVerifyPageState();
 }
 
-class _MfaVerifyPageState extends State<MfaVerifyPage> {
+class _MfaVerifyPageState
+    extends State<MfaVerifyPage> {
   final codeController = TextEditingController();
 
   bool isLoading = false;
@@ -787,6 +834,8 @@ class _MfaVerifyPageState extends State<MfaVerifyPage> {
       return;
     }
 
+    if (isLoading) return;
+
     setState(() {
       isLoading = true;
     });
@@ -794,7 +843,8 @@ class _MfaVerifyPageState extends State<MfaVerifyPage> {
     try {
       final client = Supabase.instance.client;
 
-      final challenge = await client.auth.mfa.challenge(
+      final challenge =
+          await client.auth.mfa.challenge(
         factorId: widget.factorId,
       );
 
@@ -871,7 +921,9 @@ class _MfaVerifyPageState extends State<MfaVerifyPage> {
                     Icons.security,
                     size: 72,
                   ),
+
                   const SizedBox(height: 20),
+
                   const Text(
                     '追加認証が必要です',
                     style: TextStyle(
@@ -880,16 +932,21 @@ class _MfaVerifyPageState extends State<MfaVerifyPage> {
                     ),
                     textAlign: TextAlign.center,
                   ),
+
                   const SizedBox(height: 12),
+
                   const Text(
                     '認証アプリに表示されている\n'
                     '6桁のコードを入力してください。',
                     textAlign: TextAlign.center,
                   ),
+
                   const SizedBox(height: 28),
+
                   TextField(
                     controller: codeController,
-                    keyboardType: TextInputType.number,
+                    keyboardType:
+                        TextInputType.number,
                     maxLength: 6,
                     autofocus: true,
                     onSubmitted: (_) {
@@ -897,7 +954,8 @@ class _MfaVerifyPageState extends State<MfaVerifyPage> {
                         verify();
                       }
                     },
-                    decoration: const InputDecoration(
+                    decoration:
+                        const InputDecoration(
                       labelText: '6桁の認証コード',
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(
@@ -905,7 +963,9 @@ class _MfaVerifyPageState extends State<MfaVerifyPage> {
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 16),
+
                   SizedBox(
                     width: double.infinity,
                     height: 52,
@@ -913,7 +973,12 @@ class _MfaVerifyPageState extends State<MfaVerifyPage> {
                       onPressed:
                           isLoading ? null : verify,
                       child: isLoading
-                          ? const CircularProgressIndicator()
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child:
+                                  CircularProgressIndicator(),
+                            )
                           : const Text(
                               '認証する',
                               style: TextStyle(
@@ -922,7 +987,9 @@ class _MfaVerifyPageState extends State<MfaVerifyPage> {
                             ),
                     ),
                   ),
+
                   const SizedBox(height: 16),
+
                   TextButton(
                     onPressed: logout,
                     child: const Text('ログアウト'),
@@ -991,7 +1058,6 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         tasks =
             List<Map<String, dynamic>>.from(data);
-
         isLoading = false;
       });
     } on PostgrestException catch (e) {
@@ -1115,7 +1181,9 @@ class _HomePageState extends State<HomePage> {
     try {
       final user = getCurrentUser();
 
-      debugPrint('Home add user: ${user?.id}');
+      debugPrint(
+        'Home add user: ${user?.id}',
+      );
 
       if (user == null) {
         showMessage('ログインしてください');
@@ -1592,11 +1660,15 @@ class _HomePageState extends State<HomePage> {
                 fontWeight: FontWeight.bold,
               ),
             ),
+
             const SizedBox(height: 8),
+
             Text(
               'ログイン中：$email',
             ),
+
             const SizedBox(height: 20),
+
             Expanded(
               child: isLoading
                   ? const Center(
@@ -1758,7 +1830,9 @@ class _AddTaskDialogState
                 border: OutlineInputBorder(),
               ),
             ),
+
             const SizedBox(height: 16),
+
             DropdownButtonFormField<String>(
               initialValue: selectedStatus,
               decoration: const InputDecoration(
@@ -1813,7 +1887,9 @@ class _AddTaskDialogState
                 }
               },
             ),
+
             const SizedBox(height: 16),
+
             Row(
               children: [
                 const Icon(
@@ -1829,6 +1905,7 @@ class _AddTaskDialogState
                 ),
               ],
             ),
+
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
@@ -1837,6 +1914,7 @@ class _AddTaskDialogState
                     const Text('期間を選択'),
               ),
             ),
+
             Row(
               children: [
                 const Icon(
@@ -2016,7 +2094,9 @@ class _EditTaskDialogState
                 border: OutlineInputBorder(),
               ),
             ),
+
             const SizedBox(height: 16),
+
             DropdownButtonFormField<String>(
               initialValue: selectedStatus,
               decoration: const InputDecoration(
@@ -2071,7 +2151,9 @@ class _EditTaskDialogState
                 }
               },
             ),
+
             const SizedBox(height: 16),
+
             Row(
               children: [
                 const Icon(
@@ -2087,6 +2169,7 @@ class _EditTaskDialogState
                 ),
               ],
             ),
+
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
@@ -2095,6 +2178,7 @@ class _EditTaskDialogState
                     const Text('期間を選択'),
               ),
             ),
+
             Row(
               children: [
                 const Icon(
@@ -2120,6 +2204,7 @@ class _EditTaskDialogState
           },
           child: const Text('キャンセル'),
         ),
+
         TextButton(
           onPressed: () async {
             final confirmed =
@@ -2226,6 +2311,7 @@ class _EditTaskDialogState
             ),
           ),
         ),
+
         FilledButton(
           onPressed: () {
             final title =
@@ -2635,7 +2721,6 @@ class _CalendarPageState
     DateTime? end =
         parseDate(task['end_date']);
 
-    // start / end がない場合は due_date を使用
     if (start == null &&
         end == null) {
       final dueDate =
@@ -2647,12 +2732,10 @@ class _CalendarPageState
       }
     }
 
-    // start がなく end だけある場合
     if (start == null && end != null) {
       start = end;
     }
 
-    // end がない場合は start と同じ日にする
     if (start != null && end == null) {
       end = start;
     }
@@ -2754,7 +2837,6 @@ class _CalendarPageState
     }
 
     try {
-      // ダイアログ後にも再取得
       final currentUser = refreshUser();
 
       debugPrint(
@@ -3513,9 +3595,10 @@ class _CalendarPageState
 
                           final currentMonthDay =
                               date.month ==
-                                  currentMonth.month &&
-                              date.year ==
-                                  currentMonth.year;
+                                      currentMonth
+                                          .month &&
+                                  date.year ==
+                                      currentMonth.year;
 
                           final holiday =
                               isJapaneseHoliday(
@@ -3927,9 +4010,9 @@ class _CalendarPageState
                 Icons.list_alt,
               ),
               const SizedBox(width: 8),
-              Text(
+              const Text(
                 '今月のタスク',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
@@ -3943,7 +4026,9 @@ class _CalendarPageState
               ),
             ],
           ),
+
           const SizedBox(height: 8),
+
           if (monthTasks.isEmpty)
             const Card(
               child: Padding(
@@ -3953,6 +4038,7 @@ class _CalendarPageState
                 ),
               ),
             ),
+
           ...monthTasks.map((task) {
             final completed =
                 task['completed'] == true;
@@ -4033,6 +4119,7 @@ class _CalendarPageState
 
           if (undatedTasks.isNotEmpty) ...[
             const SizedBox(height: 16),
+
             Row(
               children: [
                 const Icon(
@@ -4055,7 +4142,9 @@ class _CalendarPageState
                 ),
               ],
             ),
+
             const SizedBox(height: 8),
+
             ...undatedTasks.map((task) {
               final completed =
                   task['completed'] == true;
@@ -4145,6 +4234,7 @@ class _CalendarPageState
               Icons.today,
             ),
           ),
+
           IconButton(
             tooltip: '再読み込み',
             onPressed: loadTasks,
@@ -4179,6 +4269,7 @@ class _CalendarPageState
                           Icons.chevron_left,
                         ),
                       ),
+
                       Text(
                         '${currentMonth.year}年'
                         '${currentMonth.month}月',
@@ -4189,6 +4280,7 @@ class _CalendarPageState
                               FontWeight.bold,
                         ),
                       ),
+
                       IconButton(
                         onPressed:
                             nextMonth,
