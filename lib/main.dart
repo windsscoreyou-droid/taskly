@@ -7,11 +7,22 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Supabase.initialize(
-    url: 'https://mobmajamwnxqtrwrsihj.supabase.co',
+    url: 'https://mobmajamwnxqtrwrsih.supabase.co',
     anonKey: 'sb_publishable_MPCFZfn-qNieoL1kBNeFrg_fjJlSWEE',
   );
 
   runApp(const TasklyApp());
+}
+
+// ============================================================
+// 共通：ログインユーザー取得
+// ============================================================
+
+User? getCurrentUser() {
+  final client = Supabase.instance.client;
+
+  return client.auth.currentUser ??
+      client.auth.currentSession?.user;
 }
 
 // ============================================================
@@ -91,25 +102,12 @@ class _AuthGateState extends State<AuthGate> {
       return;
     }
 
-    try {
-      // セッションが存在するか確認。
-      // MFAの有無・AAL判定はMfaRouterで行う。
-      if (!mounted) return;
+    if (!mounted) return;
 
-      setState(() {
-        session = currentSession;
-        isChecking = false;
-      });
-    } catch (e) {
-      debugPrint('認証確認エラー: $e');
-
-      if (!mounted) return;
-
-      setState(() {
-        session = currentSession;
-        isChecking = false;
-      });
-    }
+    setState(() {
+      session = currentSession;
+      isChecking = false;
+    });
   }
 
   @override
@@ -171,7 +169,6 @@ class _MfaRouterState extends State<MfaRouter> {
           )
           .toList();
 
-      // MFA未登録
       if (verifiedTotp.isEmpty) {
         if (!mounted) return;
 
@@ -185,7 +182,6 @@ class _MfaRouterState extends State<MfaRouter> {
         return;
       }
 
-      // MFA登録済み
       final factor = verifiedTotp.first;
 
       final aal =
@@ -231,19 +227,16 @@ class _MfaRouterState extends State<MfaRouter> {
       );
     }
 
-    // MFA未登録
     if (!hasMfa) {
       return MfaSetupPage(
         onCompleted: completed,
       );
     }
 
-    // MFA認証済み
     if (isAal2) {
       return const HomePage();
     }
 
-    // MFA認証が必要
     if (factorId == null) {
       return const Scaffold(
         body: Center(
@@ -367,9 +360,7 @@ class _AuthPageState extends State<AuthPage> {
                     Icons.check_circle_outline,
                     size: 80,
                   ),
-
                   const SizedBox(height: 16),
-
                   const Text(
                     'Taskly',
                     style: TextStyle(
@@ -377,9 +368,7 @@ class _AuthPageState extends State<AuthPage> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-
                   const SizedBox(height: 12),
-
                   const Text(
                     'ログイン',
                     style: TextStyle(
@@ -387,17 +376,13 @@ class _AuthPageState extends State<AuthPage> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-
                   const SizedBox(height: 8),
-
                   const Text(
                     '登録済みのメールアドレスと\n'
                     'パスワードでログインしてください。',
                     textAlign: TextAlign.center,
                   ),
-
                   const SizedBox(height: 32),
-
                   TextField(
                     controller: emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -411,9 +396,7 @@ class _AuthPageState extends State<AuthPage> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 16),
-
                   TextField(
                     controller: passwordController,
                     obscureText: obscurePassword,
@@ -444,9 +427,7 @@ class _AuthPageState extends State<AuthPage> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 24),
-
                   SizedBox(
                     width: double.infinity,
                     height: 52,
@@ -468,9 +449,7 @@ class _AuthPageState extends State<AuthPage> {
                             ),
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
                   const Text(
                     'ログイン時にメールは送信されません。',
                     textAlign: TextAlign.center,
@@ -479,9 +458,7 @@ class _AuthPageState extends State<AuthPage> {
                       color: Colors.grey,
                     ),
                   ),
-
                   const SizedBox(height: 4),
-
                   const Text(
                     'このアプリでは新規アカウント登録はできません。',
                     textAlign: TextAlign.center,
@@ -665,9 +642,7 @@ class _MfaSetupPageState extends State<MfaSetupPage> {
                     Icons.security,
                     size: 72,
                   ),
-
                   const SizedBox(height: 20),
-
                   const Text(
                     '追加認証を設定してください',
                     style: TextStyle(
@@ -676,24 +651,18 @@ class _MfaSetupPageState extends State<MfaSetupPage> {
                     ),
                     textAlign: TextAlign.center,
                   ),
-
                   const SizedBox(height: 16),
-
                   const Text(
                     'Google Authenticatorなどの\n'
                     '認証アプリを使用してください。',
                     textAlign: TextAlign.center,
                   ),
-
                   const SizedBox(height: 24),
-
                   const Text(
                     '認証アプリに以下の秘密鍵を登録してください。',
                     textAlign: TextAlign.center,
                   ),
-
                   const SizedBox(height: 12),
-
                   SelectableText(
                     secret ?? '',
                     textAlign: TextAlign.center,
@@ -703,9 +672,7 @@ class _MfaSetupPageState extends State<MfaSetupPage> {
                       letterSpacing: 1.5,
                     ),
                   ),
-
                   const SizedBox(height: 8),
-
                   const Text(
                     '※この秘密鍵は他人に公開しないでください。',
                     textAlign: TextAlign.center,
@@ -714,9 +681,7 @@ class _MfaSetupPageState extends State<MfaSetupPage> {
                       color: Colors.red,
                     ),
                   ),
-
                   const SizedBox(height: 28),
-
                   TextField(
                     controller: codeController,
                     keyboardType: TextInputType.number,
@@ -729,9 +694,7 @@ class _MfaSetupPageState extends State<MfaSetupPage> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 16),
-
                   SizedBox(
                     width: double.infinity,
                     height: 52,
@@ -748,9 +711,7 @@ class _MfaSetupPageState extends State<MfaSetupPage> {
                             ),
                     ),
                   ),
-
                   const SizedBox(height: 16),
-
                   TextButton(
                     onPressed: logout,
                     child: const Text('ログアウト'),
@@ -881,9 +842,7 @@ class _MfaVerifyPageState extends State<MfaVerifyPage> {
                     Icons.security,
                     size: 72,
                   ),
-
                   const SizedBox(height: 20),
-
                   const Text(
                     '追加認証が必要です',
                     style: TextStyle(
@@ -892,17 +851,13 @@ class _MfaVerifyPageState extends State<MfaVerifyPage> {
                     ),
                     textAlign: TextAlign.center,
                   ),
-
                   const SizedBox(height: 12),
-
                   const Text(
                     '認証アプリに表示されている\n'
                     '6桁のコードを入力してください。',
                     textAlign: TextAlign.center,
                   ),
-
                   const SizedBox(height: 28),
-
                   TextField(
                     controller: codeController,
                     keyboardType: TextInputType.number,
@@ -921,9 +876,7 @@ class _MfaVerifyPageState extends State<MfaVerifyPage> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 16),
-
                   SizedBox(
                     width: double.infinity,
                     height: 52,
@@ -940,9 +893,7 @@ class _MfaVerifyPageState extends State<MfaVerifyPage> {
                             ),
                     ),
                   ),
-
                   const SizedBox(height: 16),
-
                   TextButton(
                     onPressed: logout,
                     child: const Text('ログアウト'),
@@ -969,7 +920,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final List<Map<String, dynamic>> tasks = [];
+  List<Map<String, dynamic>> tasks = [];
 
   bool isLoading = true;
 
@@ -981,8 +932,9 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> loadTasks() async {
     try {
-      final user =
-          Supabase.instance.client.auth.currentUser;
+      final user = getCurrentUser();
+
+      debugPrint('Home user: ${user?.id}');
 
       if (user == null) {
         if (mounted) {
@@ -1008,11 +960,8 @@ class _HomePageState extends State<HomePage> {
       if (!mounted) return;
 
       setState(() {
-        tasks.clear();
-
-        tasks.addAll(
-          List<Map<String, dynamic>>.from(data),
-        );
+        tasks =
+            List<Map<String, dynamic>>.from(data);
 
         isLoading = false;
       });
@@ -1135,8 +1084,9 @@ class _HomePageState extends State<HomePage> {
     }
 
     try {
-      final user =
-          Supabase.instance.client.auth.currentUser;
+      final user = getCurrentUser();
+
+      debugPrint('Home add user: ${user?.id}');
 
       if (user == null) {
         showMessage('ログインしてください');
@@ -1187,8 +1137,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> deleteTask(String id) async {
-    final user =
-        Supabase.instance.client.auth.currentUser;
+    final user = getCurrentUser();
 
     if (user == null) {
       showMessage('ログインしてください');
@@ -1270,8 +1219,7 @@ class _HomePageState extends State<HomePage> {
     }
 
     try {
-      final user =
-          Supabase.instance.client.auth.currentUser;
+      final user = getCurrentUser();
 
       if (user == null) {
         showMessage('ログインしてください');
@@ -1303,8 +1251,6 @@ class _HomePageState extends State<HomePage> {
       debugPrint('タスク編集エラー');
       debugPrint('message: ${e.message}');
       debugPrint('code: ${e.code}');
-      debugPrint('details: ${e.details}');
-      debugPrint('hint: ${e.hint}');
 
       if (mounted) {
         showMessage(
@@ -1326,8 +1272,7 @@ class _HomePageState extends State<HomePage> {
     String id,
     String status,
   ) async {
-    final user =
-        Supabase.instance.client.auth.currentUser;
+    final user = getCurrentUser();
 
     if (user == null) {
       showMessage('ログインしてください');
@@ -1571,8 +1516,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final email =
-        Supabase.instance.client.auth.currentUser?.email ??
-            '';
+        getCurrentUser()?.email ?? '';
 
     return Scaffold(
       appBar: AppBar(
@@ -1708,8 +1652,14 @@ class _AddTaskDialogState
     super.initState();
 
     if (widget.initialDate != null) {
-      startDate = widget.initialDate;
-      endDate = widget.initialDate;
+      final date = DateTime(
+        widget.initialDate!.year,
+        widget.initialDate!.month,
+        widget.initialDate!.day,
+      );
+
+      startDate = date;
+      endDate = date;
     }
   }
 
@@ -1843,15 +1793,20 @@ class _AddTaskDialogState
                 const SizedBox(width: 8),
                 const Text('開始日'),
                 const Spacer(),
-                Text(
-                  dateText(startDate),
-                ),
-                TextButton(
-                  onPressed: selectDateRange,
-                  child:
-                      const Text('期間を選択'),
+                Flexible(
+                  child: Text(
+                    dateText(startDate),
+                  ),
                 ),
               ],
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: selectDateRange,
+                child:
+                    const Text('期間を選択'),
+              ),
             ),
             Row(
               children: [
@@ -1861,13 +1816,10 @@ class _AddTaskDialogState
                 const SizedBox(width: 8),
                 const Text('終了日'),
                 const Spacer(),
-                Text(
-                  dateText(endDate),
-                ),
-                TextButton(
-                  onPressed: selectDateRange,
-                  child:
-                      const Text('期間を選択'),
+                Flexible(
+                  child: Text(
+                    dateText(endDate),
+                  ),
                 ),
               ],
             ),
@@ -2099,15 +2051,20 @@ class _EditTaskDialogState
                 const SizedBox(width: 8),
                 const Text('開始日'),
                 const Spacer(),
-                Text(
-                  dateText(startDate),
-                ),
-                TextButton(
-                  onPressed: selectDateRange,
-                  child:
-                      const Text('期間を選択'),
+                Flexible(
+                  child: Text(
+                    dateText(startDate),
+                  ),
                 ),
               ],
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: selectDateRange,
+                child:
+                    const Text('期間を選択'),
+              ),
             ),
             Row(
               children: [
@@ -2117,13 +2074,10 @@ class _EditTaskDialogState
                 const SizedBox(width: 8),
                 const Text('終了日'),
                 const Spacer(),
-                Text(
-                  dateText(endDate),
-                ),
-                TextButton(
-                  onPressed: selectDateRange,
-                  child:
-                      const Text('期間を選択'),
+                Flexible(
+                  child: Text(
+                    dateText(endDate),
+                  ),
                 ),
               ],
             ),
@@ -2176,13 +2130,18 @@ class _EditTaskDialogState
             }
 
             try {
-              final user = Supabase
-                  .instance
-                  .client
-                  .auth
-                  .currentUser;
+              final user = getCurrentUser();
 
               if (user == null) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(
+                    const SnackBar(
+                      content:
+                          Text('ログインしてください'),
+                    ),
+                  );
+                }
                 return;
               }
 
@@ -2287,6 +2246,8 @@ class _CalendarPageState
 
   List<Map<String, dynamic>> tasks = [];
 
+  User? loggedInUser;
+
   bool isLoading = true;
 
   static const double weekHeight = 105;
@@ -2297,7 +2258,24 @@ class _CalendarPageState
   @override
   void initState() {
     super.initState();
+
+    loggedInUser = getCurrentUser();
+
+    debugPrint(
+      'Calendar init user: ${loggedInUser?.id}',
+    );
+
     loadTasks();
+  }
+
+  User? refreshUser() {
+    final user = getCurrentUser();
+
+    if (user != null) {
+      loggedInUser = user;
+    }
+
+    return loggedInUser;
   }
 
   void showMessage(String message) {
@@ -2348,6 +2326,10 @@ class _CalendarPageState
     );
   }
 
+  // ------------------------------------------------------------
+  // 祝日
+  // ------------------------------------------------------------
+
   bool isJapaneseHoliday(DateTime date) {
     final year = date.year;
     final month = date.month;
@@ -2372,22 +2354,14 @@ class _CalendarPageState
       return true;
     }
 
-    if (month == 3) {
-      final vernalDay =
-          _vernalEquinoxDay(year);
-
-      if (day == vernalDay) {
-        return true;
-      }
+    if (month == 3 &&
+        day == _vernalEquinoxDay(year)) {
+      return true;
     }
 
-    if (month == 9) {
-      final autumnalDay =
-          _autumnalEquinoxDay(year);
-
-      if (day == autumnalDay) {
-        return true;
-      }
+    if (month == 9 &&
+        day == _autumnalEquinoxDay(year)) {
+      return true;
     }
 
     if (month == 1 &&
@@ -2534,16 +2508,28 @@ class _CalendarPageState
         .floor();
   }
 
+  // ------------------------------------------------------------
+  // タスク読み込み
+  // ------------------------------------------------------------
+
   Future<void> loadTasks() async {
     try {
-      final user =
-          Supabase.instance.client.auth.currentUser;
+      final user = refreshUser();
+
+      debugPrint(
+        'Calendar load user: ${user?.id}',
+      );
 
       if (user == null) {
         if (mounted) {
           setState(() {
             isLoading = false;
+            tasks = [];
           });
+
+          showMessage(
+            'ログインユーザーが取得できません',
+          );
         }
 
         return;
@@ -2560,6 +2546,10 @@ class _CalendarPageState
                 user.id,
               );
 
+      debugPrint(
+        'Calendar task count: ${data.length}',
+      );
+
       if (!mounted) return;
 
       setState(() {
@@ -2569,6 +2559,12 @@ class _CalendarPageState
         isLoading = false;
       });
     } on PostgrestException catch (e) {
+      debugPrint('カレンダー読み込みエラー');
+      debugPrint('message: ${e.message}');
+      debugPrint('code: ${e.code}');
+      debugPrint('details: ${e.details}');
+      debugPrint('hint: ${e.hint}');
+
       if (!mounted) return;
 
       setState(() {
@@ -2581,6 +2577,10 @@ class _CalendarPageState
         '${e.message}',
       );
     } catch (e) {
+      debugPrint(
+        'カレンダー読み込みエラー: $e',
+      );
+
       if (!mounted) return;
 
       setState(() {
@@ -2593,6 +2593,10 @@ class _CalendarPageState
     }
   }
 
+  // ------------------------------------------------------------
+  // タスク期間
+  // ------------------------------------------------------------
+
   Map<String, dynamic>? getTaskPeriod(
     Map<String, dynamic> task,
   ) {
@@ -2602,21 +2606,31 @@ class _CalendarPageState
     DateTime? end =
         parseDate(task['end_date']);
 
+    // start / end がない場合は due_date を使用
     if (start == null &&
-        end == null &&
-        task['due_date'] != null) {
-      final oldDate =
+        end == null) {
+      final dueDate =
           parseDate(task['due_date']);
 
-      start = oldDate;
-      end = oldDate;
+      if (dueDate != null) {
+        start = dueDate;
+        end = dueDate;
+      }
     }
 
-    if (start == null) {
+    // start がなく end だけある場合
+    if (start == null && end != null) {
+      start = end;
+    }
+
+    // end がない場合は start と同じ日にする
+    if (start != null && end == null) {
+      end = start;
+    }
+
+    if (start == null || end == null) {
       return null;
     }
-
-    end ??= start;
 
     start = dateOnly(start);
     end = dateOnly(end);
@@ -2655,9 +2669,24 @@ class _CalendarPageState
     }).toList();
   }
 
+  // ------------------------------------------------------------
+  // タスク追加
+  // ------------------------------------------------------------
+
   Future<void> addCalendarTask(
     DateTime date,
   ) async {
+    final user = refreshUser();
+
+    debugPrint(
+      'Calendar add user before dialog: ${user?.id}',
+    );
+
+    if (user == null) {
+      showMessage('ログインしてください');
+      return;
+    }
+
     final result =
         await showDialog<Map<String, dynamic>>(
       context: context,
@@ -2696,10 +2725,14 @@ class _CalendarPageState
     }
 
     try {
-      final user =
-          Supabase.instance.client.auth.currentUser;
+      // ダイアログ後にも再取得
+      final currentUser = refreshUser();
 
-      if (user == null) {
+      debugPrint(
+        'Calendar add user: ${currentUser?.id}',
+      );
+
+      if (currentUser == null) {
         showMessage('ログインしてください');
         return;
       }
@@ -2708,7 +2741,7 @@ class _CalendarPageState
           .from('tasks')
           .insert({
         'title': title,
-        'user_id': user.id,
+        'user_id': currentUser.id,
         'start_date':
             formatDate(startDate),
         'end_date':
@@ -2723,6 +2756,11 @@ class _CalendarPageState
         showMessage('タスクを登録しました');
       }
     } on PostgrestException catch (e) {
+      debugPrint(
+        'Calendar add Postgrest error: '
+        '${e.message}',
+      );
+
       if (!mounted) return;
 
       showMessage(
@@ -2739,9 +2777,24 @@ class _CalendarPageState
     }
   }
 
+  // ------------------------------------------------------------
+  // タスク編集
+  // ------------------------------------------------------------
+
   Future<void> editCalendarTask(
     Map<String, dynamic> task,
   ) async {
+    final user = refreshUser();
+
+    debugPrint(
+      'Calendar edit user: ${user?.id}',
+    );
+
+    if (user == null) {
+      showMessage('ログインしてください');
+      return;
+    }
+
     final result =
         await showDialog<Map<String, dynamic>>(
       context: context,
@@ -2793,10 +2846,9 @@ class _CalendarPageState
     }
 
     try {
-      final user =
-          Supabase.instance.client.auth.currentUser;
+      final currentUser = refreshUser();
 
-      if (user == null) {
+      if (currentUser == null) {
         showMessage('ログインしてください');
         return;
       }
@@ -2820,7 +2872,7 @@ class _CalendarPageState
           )
           .eq(
             'user_id',
-            user.id,
+            currentUser.id,
           );
 
       await loadTasks();
@@ -2847,11 +2899,14 @@ class _CalendarPageState
     }
   }
 
+  // ------------------------------------------------------------
+  // 完了切り替え
+  // ------------------------------------------------------------
+
   Future<void> toggleCalendarTask(
     Map<String, dynamic> task,
   ) async {
-    final user =
-        Supabase.instance.client.auth.currentUser;
+    final user = refreshUser();
 
     if (user == null) {
       showMessage('ログインしてください');
@@ -2896,11 +2951,14 @@ class _CalendarPageState
     }
   }
 
+  // ------------------------------------------------------------
+  // 削除
+  // ------------------------------------------------------------
+
   Future<void> deleteCalendarTask(
     Map<String, dynamic> task,
   ) async {
-    final user =
-        Supabase.instance.client.auth.currentUser;
+    final user = refreshUser();
 
     if (user == null) {
       showMessage('ログインしてください');
@@ -2944,6 +3002,10 @@ class _CalendarPageState
     }
   }
 
+  // ------------------------------------------------------------
+  // 月移動
+  // ------------------------------------------------------------
+
   void previousMonth() {
     setState(() {
       currentMonth = DateTime(
@@ -2964,6 +3026,10 @@ class _CalendarPageState
     });
   }
 
+  // ------------------------------------------------------------
+  // 日付タップ
+  // ------------------------------------------------------------
+
   void showDayTasks(DateTime date) {
     showDialog(
       context: context,
@@ -2979,113 +3045,85 @@ class _CalendarPageState
           ),
           content: SizedBox(
             width: double.maxFinite,
-            child: ListView(
-              shrinkWrap: true,
-              children: [
-                ...dayTasks.map((task) {
-                  final completed =
-                      task['completed'] == true;
-
-                  final start =
-                      parseDate(
-                    task['start_date'],
-                  );
-
-                  final end =
-                      parseDate(
-                    task['end_date'],
-                  );
-
-                  String periodText = '';
-
-                  if (start != null &&
-                      end != null) {
-                    periodText =
-                        '${start.month}/${start.day}'
-                        '〜'
-                        '${end.month}/${end.day}';
-                  }
-
-                  return ListTile(
-                    leading: Checkbox(
-                      value: completed,
-                      onChanged: (_) async {
-                        Navigator.of(
-                          dialogContext,
-                        ).pop();
-
-                        await toggleCalendarTask(
-                          task,
-                        );
-                      },
-                    ),
-                    title: Text(
-                      task['title']
-                              ?.toString() ??
-                          '',
-                      style: TextStyle(
-                        decoration: completed
-                            ? TextDecoration
-                                .lineThrough
-                            : TextDecoration.none,
-                      ),
-                    ),
-                    subtitle:
-                        periodText.isEmpty
-                            ? null
-                            : Text(
-                                '期間：$periodText',
-                              ),
-                    trailing: Row(
-                      mainAxisSize:
-                          MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(
-                            Icons
-                                .edit_outlined,
-                          ),
-                          onPressed: () async {
-                            Navigator.of(
-                              dialogContext,
-                            ).pop();
-
-                            await editCalendarTask(
-                              task,
-                            );
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons
-                                .delete_outline,
-                          ),
-                          onPressed: () async {
-                            Navigator.of(
-                              dialogContext,
-                            ).pop();
-
-                            await deleteCalendarTask(
-                              task,
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-                if (dayTasks.isEmpty)
-                  const Padding(
-                    padding:
-                        EdgeInsets.all(16),
+            child: dayTasks.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.all(16),
                     child: Center(
                       child: Text(
                         'この日のタスクはありません',
                       ),
                     ),
+                  )
+                : ListView(
+                    shrinkWrap: true,
+                    children: [
+                      ...dayTasks.map((task) {
+                        final completed =
+                            task['completed'] == true;
+
+                        return ListTile(
+                          leading: Checkbox(
+                            value: completed,
+                            onChanged: (_) async {
+                              Navigator.of(
+                                dialogContext,
+                              ).pop();
+
+                              await toggleCalendarTask(
+                                task,
+                              );
+                            },
+                          ),
+                          title: Text(
+                            task['title']
+                                    ?.toString() ??
+                                '',
+                            style: TextStyle(
+                              decoration: completed
+                                  ? TextDecoration
+                                      .lineThrough
+                                  : TextDecoration.none,
+                            ),
+                          ),
+                          trailing: Row(
+                            mainAxisSize:
+                                MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.edit_outlined,
+                                ),
+                                onPressed: () async {
+                                  Navigator.of(
+                                    dialogContext,
+                                  ).pop();
+
+                                  await editCalendarTask(
+                                    task,
+                                  );
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons
+                                      .delete_outline,
+                                ),
+                                onPressed: () async {
+                                  Navigator.of(
+                                    dialogContext,
+                                  ).pop();
+
+                                  await deleteCalendarTask(
+                                    task,
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
                   ),
-              ],
-            ),
           ),
           actions: [
             TextButton.icon(
@@ -3120,6 +3158,10 @@ class _CalendarPageState
       },
     );
   }
+
+  // ------------------------------------------------------------
+  // カレンダー日生成
+  // ------------------------------------------------------------
 
   List<DateTime> createCalendarDays() {
     final firstDay = DateTime(
@@ -3186,6 +3228,10 @@ class _CalendarPageState
 
     return weeks;
   }
+
+  // ------------------------------------------------------------
+  // 週のタスク
+  // ------------------------------------------------------------
 
   List<Map<String, dynamic>> getTasksForWeek(
     List<DateTime> week,
@@ -3255,6 +3301,10 @@ class _CalendarPageState
 
     return result;
   }
+
+  // ------------------------------------------------------------
+  // カレンダー週
+  // ------------------------------------------------------------
 
   Widget buildWeek(
     List<DateTime> week,
@@ -3419,6 +3469,7 @@ class _CalendarPageState
               child: Stack(
                 clipBehavior: Clip.hardEdge,
                 children: [
+                  // 日付セル
                   Positioned.fill(
                     child: Row(
                       children:
@@ -3433,7 +3484,9 @@ class _CalendarPageState
 
                           final currentMonthDay =
                               date.month ==
-                                  currentMonth.month;
+                                  currentMonth.month &&
+                              date.year ==
+                                  currentMonth.year;
 
                           final holiday =
                               isJapaneseHoliday(
@@ -3524,6 +3577,8 @@ class _CalendarPageState
                       ),
                     ),
                   ),
+
+                  // タスクバー
                   ...weekTasks.map(
                     (task) {
                       final lane =
@@ -3684,8 +3739,7 @@ class _CalendarPageState
                               title,
                               maxLines: 1,
                               overflow:
-                                  TextOverflow
-                                      .ellipsis,
+                                  TextOverflow.ellipsis,
                               style:
                                   TextStyle(
                                 fontSize: 10,
@@ -3701,6 +3755,8 @@ class _CalendarPageState
                       );
                     },
                   ),
+
+                  // 隠れているタスク数
                   if (weekTasks.where(
                     (task) {
                       final lane =
@@ -3758,6 +3814,287 @@ class _CalendarPageState
     );
   }
 
+  // ------------------------------------------------------------
+  // 今月のタスク一覧
+  // ------------------------------------------------------------
+
+  List<Map<String, dynamic>> getCurrentMonthTasks() {
+    final monthStart = DateTime(
+      currentMonth.year,
+      currentMonth.month,
+      1,
+    );
+
+    final monthEnd = DateTime(
+      currentMonth.year,
+      currentMonth.month + 1,
+      0,
+    );
+
+    final result = tasks.where((task) {
+      final period =
+          getTaskPeriod(task);
+
+      if (period == null) {
+        return false;
+      }
+
+      final start =
+          period['start'] as DateTime;
+
+      final end =
+          period['end'] as DateTime;
+
+      return !end.isBefore(monthStart) &&
+          !start.isAfter(monthEnd);
+    }).toList();
+
+    result.sort((a, b) {
+      final aPeriod =
+          getTaskPeriod(a);
+
+      final bPeriod =
+          getTaskPeriod(b);
+
+      if (aPeriod == null ||
+          bPeriod == null) {
+        return 0;
+      }
+
+      final aStart =
+          aPeriod['start'] as DateTime;
+
+      final bStart =
+          bPeriod['start'] as DateTime;
+
+      return aStart.compareTo(bStart);
+    });
+
+    return result;
+  }
+
+  Widget buildMonthTaskList() {
+    final monthTasks =
+        getCurrentMonthTasks();
+
+    final undatedTasks = tasks.where((task) {
+      return getTaskPeriod(task) == null;
+    }).toList();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        12,
+        16,
+        12,
+        20,
+      ),
+      child: Column(
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.list_alt,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '今月のタスク',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${monthTasks.length}件',
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (monthTasks.isEmpty)
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Text(
+                  'この月に日付付きのタスクはありません',
+                ),
+              ),
+            ),
+          ...monthTasks.map((task) {
+            final completed =
+                task['completed'] == true;
+
+            final period =
+                getTaskPeriod(task);
+
+            String periodText = '';
+
+            if (period != null) {
+              final start =
+                  period['start'] as DateTime;
+
+              final end =
+                  period['end'] as DateTime;
+
+              if (isSameDay(start, end)) {
+                periodText =
+                    '${start.month}/${start.day}';
+              } else {
+                periodText =
+                    '${start.month}/${start.day}'
+                    '〜'
+                    '${end.month}/${end.day}';
+              }
+            }
+
+            return Card(
+              child: ListTile(
+                leading: Checkbox(
+                  value: completed,
+                  onChanged: (_) async {
+                    await toggleCalendarTask(
+                      task,
+                    );
+                  },
+                ),
+                title: Text(
+                  task['title']?.toString() ?? '',
+                  style: TextStyle(
+                    decoration: completed
+                        ? TextDecoration.lineThrough
+                        : TextDecoration.none,
+                  ),
+                ),
+                subtitle: Text(
+                  periodText.isEmpty
+                      ? '日付なし'
+                      : '期間：$periodText',
+                ),
+                trailing: Row(
+                  mainAxisSize:
+                      MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: '編集',
+                      icon: const Icon(
+                        Icons.edit_outlined,
+                      ),
+                      onPressed: () {
+                        editCalendarTask(task);
+                      },
+                    ),
+                    IconButton(
+                      tooltip: '削除',
+                      icon: const Icon(
+                        Icons.delete_outline,
+                      ),
+                      onPressed: () {
+                        deleteCalendarTask(task);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+
+          if (undatedTasks.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Icon(
+                  Icons.event_busy,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  '日付なしのタスク',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${undatedTasks.length}件',
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ...undatedTasks.map((task) {
+              final completed =
+                  task['completed'] == true;
+
+              return Card(
+                child: ListTile(
+                  leading: Checkbox(
+                    value: completed,
+                    onChanged: (_) async {
+                      await toggleCalendarTask(
+                        task,
+                      );
+                    },
+                  ),
+                  title: Text(
+                    task['title']
+                            ?.toString() ??
+                        '',
+                    style: TextStyle(
+                      decoration: completed
+                          ? TextDecoration
+                              .lineThrough
+                          : TextDecoration.none,
+                    ),
+                  ),
+                  subtitle:
+                      const Text('日付未設定'),
+                  trailing: Row(
+                    mainAxisSize:
+                        MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: '編集',
+                        icon: const Icon(
+                          Icons.edit_outlined,
+                        ),
+                        onPressed: () {
+                          editCalendarTask(
+                            task,
+                          );
+                        },
+                      ),
+                      IconButton(
+                        tooltip: '削除',
+                        icon: const Icon(
+                          Icons.delete_outline,
+                        ),
+                        onPressed: () {
+                          deleteCalendarTask(
+                            task,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ------------------------------------------------------------
+  // カレンダー画面
+  // ------------------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
     final weeks = createWeeks();
@@ -3767,6 +4104,26 @@ class _CalendarPageState
         title: const Text(
           'カレンダー',
         ),
+        actions: [
+          IconButton(
+            tooltip: '今月',
+            onPressed: () {
+              setState(() {
+                currentMonth = DateTime.now();
+              });
+            },
+            icon: const Icon(
+              Icons.today,
+            ),
+          ),
+          IconButton(
+            tooltip: '再読み込み',
+            onPressed: loadTasks,
+            icon: const Icon(
+              Icons.refresh,
+            ),
+          ),
+        ],
       ),
       body: isLoading
           ? const Center(
@@ -3813,6 +4170,7 @@ class _CalendarPageState
                     ],
                   ),
                 ),
+
                 SizedBox(
                   width: double.infinity,
                   child: Row(
@@ -3855,35 +4213,41 @@ class _CalendarPageState
                     ],
                   ),
                 ),
+
                 const SizedBox(
                   height: 4,
                 ),
+
                 Expanded(
                   child:
                       SingleChildScrollView(
                     child: Column(
-                      children: weeks
-                          .map(
-                            (week) =>
-                                buildWeek(
-                              week,
-                            ),
-                          )
-                          .toList(),
+                      children: [
+                        ...weeks.map(
+                          (week) =>
+                              buildWeek(
+                            week,
+                          ),
+                        ),
+                        buildMonthTaskList(),
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
       floatingActionButton:
-          FloatingActionButton(
+          FloatingActionButton.extended(
         onPressed: () {
           addCalendarTask(
             DateTime.now(),
           );
         },
-        child: const Icon(
+        icon: const Icon(
           Icons.add,
+        ),
+        label: const Text(
+          'タスク追加',
         ),
       ),
     );
