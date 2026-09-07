@@ -1,6 +1,6 @@
+
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -29,9 +29,7 @@ class TasklyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-
-      // const を外しています
-      home: AuthGate(),
+      home: const AuthGate(),
     );
   }
 }
@@ -41,7 +39,7 @@ class TasklyApp extends StatelessWidget {
 // ============================================================
 
 class AuthGate extends StatefulWidget {
-  AuthGate({super.key});
+  const AuthGate({super.key});
 
   @override
   State<AuthGate> createState() => _AuthGateState();
@@ -99,14 +97,27 @@ class AuthPage extends StatefulWidget {
 
 class _AuthPageState extends State<AuthPage> {
   final emailController = TextEditingController();
+  final passwordController = TextEditingController();
 
   bool isLoading = false;
+  bool obscurePassword = true;
 
   Future<void> submit() async {
     final email = emailController.text.trim();
+    final password = passwordController.text;
 
     if (email.isEmpty) {
       showMessage('メールアドレスを入力してください');
+      return;
+    }
+
+    if (password.isEmpty) {
+      showMessage('パスワードを入力してください');
+      return;
+    }
+
+    if (password.length < 8) {
+      showMessage('パスワードは8文字以上にしてください');
       return;
     }
 
@@ -115,30 +126,19 @@ class _AuthPageState extends State<AuthPage> {
     });
 
     try {
-      await Supabase.instance.client.auth.signInWithOtp(
+      await Supabase.instance.client.auth.signInWithPassword(
         email: email,
-
-        // 新規ユーザー登録は禁止
-        shouldCreateUser: false,
-
-        emailRedirectTo: kIsWeb
-            ? 'https://windsscoreyou-droid.github.io/taskly/'
-            : 'io.taskly.app://login-callback/',
+        password: password,
       );
 
       if (!mounted) return;
 
-      showMessage(
-        'ログイン用のメールを送信しました。\n'
-        'メールを確認して、リンクを押してください。',
-      );
-
-      emailController.clear();
+      showMessage('ログインしました');
     } on AuthException catch (e) {
       if (!mounted) return;
 
       showMessage(
-        'メールの送信に失敗しました\n${e.message}',
+        'ログインに失敗しました\n${e.message}',
       );
     } catch (e) {
       if (!mounted) return;
@@ -168,6 +168,7 @@ class _AuthPageState extends State<AuthPage> {
   @override
   void dispose() {
     emailController.dispose();
+    passwordController.dispose();
     super.dispose();
   }
 
@@ -202,7 +203,7 @@ class _AuthPageState extends State<AuthPage> {
                   const SizedBox(height: 12),
 
                   const Text(
-                    'メールアドレスでログイン',
+                    'ログイン',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w500,
@@ -212,8 +213,8 @@ class _AuthPageState extends State<AuthPage> {
                   const SizedBox(height: 8),
 
                   const Text(
-                    '登録済みのメールアドレスを入力すると\n'
-                    'ログイン用リンクを送信します。',
+                    '登録済みのメールアドレスと\n'
+                    'パスワードでログインしてください。',
                     textAlign: TextAlign.center,
                   ),
 
@@ -222,12 +223,7 @@ class _AuthPageState extends State<AuthPage> {
                   TextField(
                     controller: emailController,
                     keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) {
-                      if (!isLoading) {
-                        submit();
-                      }
-                    },
+                    textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
                       labelText: 'メールアドレス',
                       hintText: 'example@gmail.com',
@@ -238,21 +234,56 @@ class _AuthPageState extends State<AuthPage> {
                     ),
                   ),
 
+                  const SizedBox(height: 16),
+
+                  TextField(
+                    controller: passwordController,
+                    obscureText: obscurePassword,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) {
+                      if (!isLoading) {
+                        submit();
+                      }
+                    },
+                    decoration: InputDecoration(
+                      labelText: 'パスワード',
+                      border: const OutlineInputBorder(),
+                      prefixIcon: const Icon(
+                        Icons.lock_outline,
+                      ),
+                      suffixIcon: IconButton(
+                        onPressed: () {
+                          setState(() {
+                            obscurePassword =
+                                !obscurePassword;
+                          });
+                        },
+                        icon: Icon(
+                          obscurePassword
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                        ),
+                      ),
+                    ),
+                  ),
+
                   const SizedBox(height: 24),
 
                   SizedBox(
                     width: double.infinity,
                     height: 52,
                     child: FilledButton(
-                      onPressed: isLoading ? null : submit,
+                      onPressed:
+                          isLoading ? null : submit,
                       child: isLoading
                           ? const SizedBox(
                               width: 24,
                               height: 24,
-                              child: CircularProgressIndicator(),
+                              child:
+                                  CircularProgressIndicator(),
                             )
                           : const Text(
-                              'ログイン用メールを送信',
+                              'ログイン',
                               style: TextStyle(
                                 fontSize: 17,
                               ),
@@ -263,7 +294,8 @@ class _AuthPageState extends State<AuthPage> {
                   const SizedBox(height: 20),
 
                   const Text(
-                    'パスワードは必要ありません。',
+                    'このアプリでは新規アカウント登録はできません。',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13,
                       color: Colors.grey,
@@ -683,7 +715,21 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> logout() async {
-    await Supabase.instance.client.auth.signOut();
+    try {
+      await Supabase.instance.client.auth.signOut();
+    } on AuthException catch (e) {
+      if (mounted) {
+        showMessage(
+          'ログアウトに失敗しました\n${e.message}',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showMessage(
+          'ログアウトに失敗しました\n$e',
+        );
+      }
+    }
   }
 
   void showMessage(String message) {
@@ -738,7 +784,6 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ),
-
         ...sectionTasks.map((task) {
           final taskId =
               task['id'].toString();
@@ -774,7 +819,6 @@ class _HomePageState extends State<HomePage> {
                   );
                 },
               ),
-
               title: Text(
                 taskTitle,
                 style: TextStyle(
@@ -783,7 +827,6 @@ class _HomePageState extends State<HomePage> {
                       : TextDecoration.none,
                 ),
               ),
-
               subtitle:
                   startDate == null &&
                           endDate == null
@@ -792,7 +835,6 @@ class _HomePageState extends State<HomePage> {
                           '期間：'
                           '${getPeriodText(startDate, endDate)}',
                         ),
-
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -850,7 +892,6 @@ class _HomePageState extends State<HomePage> {
                       ];
                     },
                   ),
-
                   IconButton(
                     icon: const Icon(
                       Icons.edit_outlined,
@@ -865,7 +906,6 @@ class _HomePageState extends State<HomePage> {
                       );
                     },
                   ),
-
                   IconButton(
                     icon: const Icon(
                       Icons.delete_outline,
@@ -879,7 +919,6 @@ class _HomePageState extends State<HomePage> {
             ),
           );
         }),
-
         const SizedBox(height: 12),
       ],
     );
@@ -915,7 +954,6 @@ class _HomePageState extends State<HomePage> {
             ),
             tooltip: 'カレンダー',
           ),
-
           IconButton(
             onPressed: logout,
             icon: const Icon(
@@ -925,7 +963,6 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -939,15 +976,11 @@ class _HomePageState extends State<HomePage> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-
             const SizedBox(height: 8),
-
             Text(
               'ログイン中：$email',
             ),
-
             const SizedBox(height: 20),
-
             Expanded(
               child: isLoading
                   ? const Center(
@@ -989,7 +1022,6 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
-
       floatingActionButton:
           FloatingActionButton(
         onPressed: addTask,
@@ -1094,7 +1126,6 @@ class _AddTaskDialogState
       title: const Text(
         'タスクを追加',
       ),
-
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1107,9 +1138,7 @@ class _AddTaskDialogState
                 border: OutlineInputBorder(),
               ),
             ),
-
             const SizedBox(height: 16),
-
             DropdownButtonFormField<String>(
               value: selectedStatus,
               decoration: const InputDecoration(
@@ -1164,9 +1193,7 @@ class _AddTaskDialogState
                 }
               },
             ),
-
             const SizedBox(height: 16),
-
             Row(
               children: [
                 const Icon(
@@ -1185,7 +1212,6 @@ class _AddTaskDialogState
                 ),
               ],
             ),
-
             Row(
               children: [
                 const Icon(
@@ -1207,7 +1233,6 @@ class _AddTaskDialogState
           ],
         ),
       ),
-
       actions: [
         TextButton(
           onPressed: () {
@@ -1217,7 +1242,6 @@ class _AddTaskDialogState
             'キャンセル',
           ),
         ),
-
         FilledButton(
           onPressed: () {
             final name =
@@ -1363,7 +1387,6 @@ class _EditTaskDialogState
       title: const Text(
         'タスクを編集',
       ),
-
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1376,9 +1399,7 @@ class _EditTaskDialogState
                 border: OutlineInputBorder(),
               ),
             ),
-
             const SizedBox(height: 16),
-
             DropdownButtonFormField<String>(
               value: selectedStatus,
               decoration: const InputDecoration(
@@ -1433,9 +1454,7 @@ class _EditTaskDialogState
                 }
               },
             ),
-
             const SizedBox(height: 16),
-
             Row(
               children: [
                 const Icon(
@@ -1454,7 +1473,6 @@ class _EditTaskDialogState
                 ),
               ],
             ),
-
             Row(
               children: [
                 const Icon(
@@ -1476,7 +1494,6 @@ class _EditTaskDialogState
           ],
         ),
       ),
-
       actions: [
         TextButton(
           onPressed: () {
@@ -1484,7 +1501,6 @@ class _EditTaskDialogState
           },
           child: const Text('キャンセル'),
         ),
-
         TextButton(
           onPressed: () async {
             final confirmed =
@@ -1575,7 +1591,6 @@ class _EditTaskDialogState
             ),
           ),
         ),
-
         FilledButton(
           onPressed: () {
             final title =
@@ -2320,7 +2335,6 @@ class _CalendarPageState
             '${date.month}月'
             '${date.day}日',
           ),
-
           content: SizedBox(
             width: double.maxFinite,
             child: ListView(
@@ -2363,7 +2377,6 @@ class _CalendarPageState
                         );
                       },
                     ),
-
                     title: Text(
                       task['title']
                               ?.toString() ??
@@ -2375,14 +2388,12 @@ class _CalendarPageState
                             : TextDecoration.none,
                       ),
                     ),
-
                     subtitle:
                         periodText.isEmpty
                             ? null
                             : Text(
                                 '期間：$periodText',
                               ),
-
                     trailing: Row(
                       mainAxisSize:
                           MainAxisSize.min,
@@ -2401,7 +2412,6 @@ class _CalendarPageState
                             );
                           },
                         ),
-
                         IconButton(
                           icon: const Icon(
                             Icons.delete_outline,
@@ -2420,7 +2430,6 @@ class _CalendarPageState
                     ),
                   );
                 }),
-
                 if (dayTasks.isEmpty)
                   const Padding(
                     padding: EdgeInsets.all(16),
@@ -2433,7 +2442,6 @@ class _CalendarPageState
               ],
             ),
           ),
-
           actions: [
             TextButton.icon(
               onPressed: () async {
@@ -2452,7 +2460,6 @@ class _CalendarPageState
                 'タスク追加',
               ),
             ),
-
             TextButton(
               onPressed: () {
                 Navigator.of(
@@ -2870,7 +2877,6 @@ class _CalendarPageState
                       ),
                     ),
                   ),
-
                   ...weekTasks.map(
                     (task) {
                       final lane =
@@ -3042,7 +3048,6 @@ class _CalendarPageState
                       );
                     },
                   ),
-
                   if (weekTasks.where(
                     (task) {
                       final lane =
@@ -3108,7 +3113,6 @@ class _CalendarPageState
           'カレンダー',
         ),
       ),
-
       body: isLoading
           ? const Center(
               child:
@@ -3134,7 +3138,6 @@ class _CalendarPageState
                           Icons.chevron_left,
                         ),
                       ),
-
                       Text(
                         '${currentMonth.year}年'
                         '${currentMonth.month}月',
@@ -3145,7 +3148,6 @@ class _CalendarPageState
                               FontWeight.bold,
                         ),
                       ),
-
                       IconButton(
                         onPressed:
                             nextMonth,
@@ -3156,7 +3158,6 @@ class _CalendarPageState
                     ],
                   ),
                 ),
-
                 SizedBox(
                   width: double.infinity,
                   child: Row(
@@ -3199,11 +3200,9 @@ class _CalendarPageState
                     ],
                   ),
                 ),
-
                 const SizedBox(
                   height: 4,
                 ),
-
                 Expanded(
                   child:
                       SingleChildScrollView(
@@ -3221,7 +3220,6 @@ class _CalendarPageState
                 ),
               ],
             ),
-
       floatingActionButton:
           FloatingActionButton(
         onPressed: () {
