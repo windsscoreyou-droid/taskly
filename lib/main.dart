@@ -6,10 +6,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Supabase.initialize(
-    url: 'https://mobmajamwnxqtrwrsih.supabase.co',
-    anonKey: 'sb_publishable_MPCFZfn-qNieoL1kBNeFrg_fjJlSWEE',
-  );
+await Supabase.initialize(
+  url: 'https://mobmajamwnxqtrwrsih.supabase.co',
+  publishableKey: 'sb_publishable_MPCFZfn-qNieoL1kBNeFrg_fjJlSWEE',
+);
 
   runApp(const TasklyApp());
 }
@@ -272,59 +272,88 @@ class _AuthPageState extends State<AuthPage> {
   bool isLoading = false;
   bool obscurePassword = true;
 
-  Future<void> submit() async {
-    final email = emailController.text.trim();
-    final password = passwordController.text;
+Future<void> submit() async {
+  final email = emailController.text.trim();
+  final password = passwordController.text;
 
-    if (email.isEmpty) {
-      showMessage('メールアドレスを入力してください');
-      return;
+  if (email.isEmpty) {
+    showMessage('メールアドレスを入力してください');
+    return;
+  }
+
+  if (password.isEmpty) {
+    showMessage('パスワードを入力してください');
+    return;
+  }
+
+  if (isLoading) return;
+
+  setState(() {
+    isLoading = true;
+  });
+
+  try {
+    final client = Supabase.instance.client;
+
+    debugPrint('========== LOGIN START ==========');
+    debugPrint('Supabase URL: ${client.rest.url}');
+    debugPrint('Email: $email');
+
+    final response = await client.auth.signInWithPassword(
+      email: email,
+      password: password,
+    );
+
+    debugPrint('LOGIN SUCCESS');
+    debugPrint('User ID: ${response.user?.id}');
+    debugPrint('Session exists: ${response.session != null}');
+
+    if (!mounted) return;
+
+    showMessage('ログインしました');
+  } on AuthException catch (e) {
+    debugPrint('========== AUTH ERROR ==========');
+    debugPrint('message: ${e.message}');
+    debugPrint('statusCode: ${e.statusCode}');
+
+    if (!mounted) return;
+
+    String message = e.message;
+
+    if (e.message.toLowerCase().contains('invalid login')) {
+      message = 'メールアドレスまたはパスワードが違います';
     }
 
-    if (password.isEmpty) {
-      showMessage('パスワードを入力してください');
-      return;
-    }
+    showMessage(
+      'ログインに失敗しました\n$message',
+    );
+  } on ClientException catch (e) {
+    debugPrint('========== CLIENT ERROR ==========');
+    debugPrint('ClientException: $e');
 
-    setState(() {
-      isLoading = true;
-    });
+    if (!mounted) return;
 
-    try {
-      await Supabase.instance.client.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
+    showMessage(
+      'Supabaseへの接続に失敗しました\n'
+      '$e',
+    );
+  } catch (e) {
+    debugPrint('========== UNKNOWN ERROR ==========');
+    debugPrint('$e');
 
-      if (!mounted) return;
+    if (!mounted) return;
 
-      showMessage('ログインしました');
-    } on AuthException catch (e) {
-      if (!mounted) return;
-
-      String message = e.message;
-
-      if (e.message.toLowerCase().contains('invalid login')) {
-        message = 'メールアドレスまたはパスワードが違います';
-      }
-
-      showMessage(
-        'ログインに失敗しました\n$message',
-      );
-    } catch (e) {
-      if (!mounted) return;
-
-      showMessage(
-        'エラーが発生しました\n$e',
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
+    showMessage(
+      '予期しないエラーが発生しました\n$e',
+    );
+  } finally {
+    if (mounted) {
+      setState(() {
+        isLoading = false;
+      });
     }
   }
+}
 
   void showMessage(String message) {
     if (!mounted) return;
