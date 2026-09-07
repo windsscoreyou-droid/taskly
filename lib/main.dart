@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 Future<void> main() async {
@@ -30,13 +29,65 @@ class TasklyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const AuthGate(),
+
+      // const を外しています
+      home: AuthGate(),
     );
   }
 }
 
 // ============================================================
 // 認証状態を監視
+// ============================================================
+
+class AuthGate extends StatefulWidget {
+  AuthGate({super.key});
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  StreamSubscription<AuthState>? authSubscription;
+
+  Session? session;
+
+  @override
+  void initState() {
+    super.initState();
+
+    session = Supabase.instance.client.auth.currentSession;
+
+    authSubscription =
+        Supabase.instance.client.auth.onAuthStateChange.listen(
+      (data) {
+        if (!mounted) return;
+
+        setState(() {
+          session = data.session;
+        });
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    authSubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (session == null) {
+      return const AuthPage();
+    }
+
+    return const HomePage();
+  }
+}
+
+// ============================================================
+// ログイン画面
 // ============================================================
 
 class AuthPage extends StatefulWidget {
@@ -137,6 +188,7 @@ class _AuthPageState extends State<AuthPage> {
                     Icons.check_circle_outline,
                     size: 80,
                   ),
+
                   const SizedBox(height: 16),
 
                   const Text(
@@ -180,7 +232,9 @@ class _AuthPageState extends State<AuthPage> {
                       labelText: 'メールアドレス',
                       hintText: 'example@gmail.com',
                       border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.email_outlined),
+                      prefixIcon: Icon(
+                        Icons.email_outlined,
+                      ),
                     ),
                   ),
 
@@ -199,7 +253,9 @@ class _AuthPageState extends State<AuthPage> {
                             )
                           : const Text(
                               'ログイン用メールを送信',
-                              style: TextStyle(fontSize: 17),
+                              style: TextStyle(
+                                fontSize: 17,
+                              ),
                             ),
                     ),
                   ),
@@ -275,9 +331,11 @@ class _HomePageState extends State<HomePage> {
 
       setState(() {
         tasks.clear();
+
         tasks.addAll(
           List<Map<String, dynamic>>.from(data),
         );
+
         isLoading = false;
       });
     } on PostgrestException catch (e) {
@@ -463,7 +521,8 @@ class _HomePageState extends State<HomePage> {
       await Supabase.instance.client
           .from('tasks')
           .delete()
-          .eq('id', id);
+          .eq('id', id)
+          .eq('user_id', user.id);
 
       await loadTasks();
     } on PostgrestException catch (e) {
@@ -533,6 +592,14 @@ class _HomePageState extends State<HomePage> {
     }
 
     try {
+      final user =
+          Supabase.instance.client.auth.currentUser;
+
+      if (user == null) {
+        showMessage('ログインしてください');
+        return;
+      }
+
       await Supabase.instance.client
           .from('tasks')
           .update({
@@ -545,7 +612,9 @@ class _HomePageState extends State<HomePage> {
             : formatDate(endDate),
         'status': status,
         'completed': status == 'done',
-      }).eq('id', id);
+      })
+          .eq('id', id)
+          .eq('user_id', user.id);
 
       await loadTasks();
 
@@ -579,6 +648,14 @@ class _HomePageState extends State<HomePage> {
     String id,
     String status,
   ) async {
+    final user =
+        Supabase.instance.client.auth.currentUser;
+
+    if (user == null) {
+      showMessage('ログインしてください');
+      return;
+    }
+
     try {
       final completed = status == 'done';
 
@@ -587,7 +664,9 @@ class _HomePageState extends State<HomePage> {
           .update({
         'status': status,
         'completed': completed,
-      }).eq('id', id);
+      })
+          .eq('id', id)
+          .eq('user_id', user.id);
 
       await loadTasks();
     } on PostgrestException catch (e) {
@@ -605,15 +684,6 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> logout() async {
     await Supabase.instance.client.auth.signOut();
-
-    if (!mounted) return;
-
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) => const AuthPage(),
-      ),
-      (route) => false,
-    );
   }
 
   void showMessage(String message) {
@@ -668,6 +738,7 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ),
+
         ...sectionTasks.map((task) {
           final taskId =
               task['id'].toString();
@@ -703,6 +774,7 @@ class _HomePageState extends State<HomePage> {
                   );
                 },
               ),
+
               title: Text(
                 taskTitle,
                 style: TextStyle(
@@ -711,6 +783,7 @@ class _HomePageState extends State<HomePage> {
                       : TextDecoration.none,
                 ),
               ),
+
               subtitle:
                   startDate == null &&
                           endDate == null
@@ -719,6 +792,7 @@ class _HomePageState extends State<HomePage> {
                           '期間：'
                           '${getPeriodText(startDate, endDate)}',
                         ),
+
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -776,6 +850,7 @@ class _HomePageState extends State<HomePage> {
                       ];
                     },
                   ),
+
                   IconButton(
                     icon: const Icon(
                       Icons.edit_outlined,
@@ -790,6 +865,7 @@ class _HomePageState extends State<HomePage> {
                       );
                     },
                   ),
+
                   IconButton(
                     icon: const Icon(
                       Icons.delete_outline,
@@ -803,6 +879,7 @@ class _HomePageState extends State<HomePage> {
             ),
           );
         }),
+
         const SizedBox(height: 12),
       ],
     );
@@ -838,14 +915,17 @@ class _HomePageState extends State<HomePage> {
             ),
             tooltip: 'カレンダー',
           ),
+
           IconButton(
             onPressed: logout,
             icon: const Icon(
               Icons.logout,
             ),
+            tooltip: 'ログアウト',
           ),
         ],
       ),
+
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -859,11 +939,15 @@ class _HomePageState extends State<HomePage> {
                 fontWeight: FontWeight.bold,
               ),
             ),
+
             const SizedBox(height: 8),
+
             Text(
               'ログイン中：$email',
             ),
+
             const SizedBox(height: 20),
+
             Expanded(
               child: isLoading
                   ? const Center(
@@ -905,6 +989,7 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
+
       floatingActionButton:
           FloatingActionButton(
         onPressed: addTask,
@@ -1009,6 +1094,7 @@ class _AddTaskDialogState
       title: const Text(
         'タスクを追加',
       ),
+
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1021,7 +1107,9 @@ class _AddTaskDialogState
                 border: OutlineInputBorder(),
               ),
             ),
+
             const SizedBox(height: 16),
+
             DropdownButtonFormField<String>(
               value: selectedStatus,
               decoration: const InputDecoration(
@@ -1076,7 +1164,9 @@ class _AddTaskDialogState
                 }
               },
             ),
+
             const SizedBox(height: 16),
+
             Row(
               children: [
                 const Icon(
@@ -1095,6 +1185,7 @@ class _AddTaskDialogState
                 ),
               ],
             ),
+
             Row(
               children: [
                 const Icon(
@@ -1116,6 +1207,7 @@ class _AddTaskDialogState
           ],
         ),
       ),
+
       actions: [
         TextButton(
           onPressed: () {
@@ -1125,6 +1217,7 @@ class _AddTaskDialogState
             'キャンセル',
           ),
         ),
+
         FilledButton(
           onPressed: () {
             final name =
@@ -1270,6 +1363,7 @@ class _EditTaskDialogState
       title: const Text(
         'タスクを編集',
       ),
+
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1282,7 +1376,9 @@ class _EditTaskDialogState
                 border: OutlineInputBorder(),
               ),
             ),
+
             const SizedBox(height: 16),
+
             DropdownButtonFormField<String>(
               value: selectedStatus,
               decoration: const InputDecoration(
@@ -1337,7 +1433,9 @@ class _EditTaskDialogState
                 }
               },
             ),
+
             const SizedBox(height: 16),
+
             Row(
               children: [
                 const Icon(
@@ -1356,6 +1454,7 @@ class _EditTaskDialogState
                 ),
               ],
             ),
+
             Row(
               children: [
                 const Icon(
@@ -1377,6 +1476,7 @@ class _EditTaskDialogState
           ],
         ),
       ),
+
       actions: [
         TextButton(
           onPressed: () {
@@ -1384,6 +1484,7 @@ class _EditTaskDialogState
           },
           child: const Text('キャンセル'),
         ),
+
         TextButton(
           onPressed: () async {
             final confirmed =
@@ -1423,10 +1524,18 @@ class _EditTaskDialogState
             }
 
             try {
+              final user =
+                  Supabase.instance.client.auth.currentUser;
+
+              if (user == null) {
+                return;
+              }
+
               await Supabase.instance.client
                   .from('tasks')
                   .delete()
-                  .eq('id', widget.taskId);
+                  .eq('id', widget.taskId)
+                  .eq('user_id', user.id);
 
               if (!mounted) return;
 
@@ -1466,6 +1575,7 @@ class _EditTaskDialogState
             ),
           ),
         ),
+
         FilledButton(
           onPressed: () {
             final title =
@@ -1793,6 +1903,7 @@ class _CalendarPageState
       setState(() {
         tasks =
             List<Map<String, dynamic>>.from(data);
+
         isLoading = false;
       });
     } on PostgrestException catch (e) {
@@ -2025,6 +2136,14 @@ class _CalendarPageState
     }
 
     try {
+      final user =
+          Supabase.instance.client.auth.currentUser;
+
+      if (user == null) {
+        showMessage('ログインしてください');
+        return;
+      }
+
       await Supabase.instance.client
           .from('tasks')
           .update({
@@ -2037,10 +2156,15 @@ class _CalendarPageState
             : formatDate(endDate),
         'status': status,
         'completed': status == 'done',
-      }).eq(
-        'id',
-        task['id'],
-      );
+      })
+          .eq(
+            'id',
+            task['id'],
+          )
+          .eq(
+            'user_id',
+            user.id,
+          );
 
       await loadTasks();
 
@@ -2069,6 +2193,14 @@ class _CalendarPageState
   Future<void> toggleCalendarTask(
     Map<String, dynamic> task,
   ) async {
+    final user =
+        Supabase.instance.client.auth.currentUser;
+
+    if (user == null) {
+      showMessage('ログインしてください');
+      return;
+    }
+
     final completed =
         task['completed'] == true;
 
@@ -2079,10 +2211,15 @@ class _CalendarPageState
         'completed': !completed,
         'status':
             !completed ? 'done' : 'todo',
-      }).eq(
-        'id',
-        task['id'],
-      );
+      })
+          .eq(
+            'id',
+            task['id'],
+          )
+          .eq(
+            'user_id',
+            user.id,
+          );
 
       await loadTasks();
     } on PostgrestException catch (e) {
@@ -2105,6 +2242,14 @@ class _CalendarPageState
   Future<void> deleteCalendarTask(
     Map<String, dynamic> task,
   ) async {
+    final user =
+        Supabase.instance.client.auth.currentUser;
+
+    if (user == null) {
+      showMessage('ログインしてください');
+      return;
+    }
+
     try {
       await Supabase.instance.client
           .from('tasks')
@@ -2112,6 +2257,10 @@ class _CalendarPageState
           .eq(
             'id',
             task['id'],
+          )
+          .eq(
+            'user_id',
+            user.id,
           );
 
       await loadTasks();
@@ -2171,6 +2320,7 @@ class _CalendarPageState
             '${date.month}月'
             '${date.day}日',
           ),
+
           content: SizedBox(
             width: double.maxFinite,
             child: ListView(
@@ -2213,6 +2363,7 @@ class _CalendarPageState
                         );
                       },
                     ),
+
                     title: Text(
                       task['title']
                               ?.toString() ??
@@ -2224,12 +2375,14 @@ class _CalendarPageState
                             : TextDecoration.none,
                       ),
                     ),
+
                     subtitle:
                         periodText.isEmpty
                             ? null
                             : Text(
                                 '期間：$periodText',
                               ),
+
                     trailing: Row(
                       mainAxisSize:
                           MainAxisSize.min,
@@ -2248,6 +2401,7 @@ class _CalendarPageState
                             );
                           },
                         ),
+
                         IconButton(
                           icon: const Icon(
                             Icons.delete_outline,
@@ -2266,6 +2420,7 @@ class _CalendarPageState
                     ),
                   );
                 }),
+
                 if (dayTasks.isEmpty)
                   const Padding(
                     padding: EdgeInsets.all(16),
@@ -2278,6 +2433,7 @@ class _CalendarPageState
               ],
             ),
           ),
+
           actions: [
             TextButton.icon(
               onPressed: () async {
@@ -2296,6 +2452,7 @@ class _CalendarPageState
                 'タスク追加',
               ),
             ),
+
             TextButton(
               onPressed: () {
                 Navigator.of(
@@ -2713,6 +2870,7 @@ class _CalendarPageState
                       ),
                     ),
                   ),
+
                   ...weekTasks.map(
                     (task) {
                       final lane =
@@ -2884,6 +3042,7 @@ class _CalendarPageState
                       );
                     },
                   ),
+
                   if (weekTasks.where(
                     (task) {
                       final lane =
@@ -2949,6 +3108,7 @@ class _CalendarPageState
           'カレンダー',
         ),
       ),
+
       body: isLoading
           ? const Center(
               child:
@@ -2974,6 +3134,7 @@ class _CalendarPageState
                           Icons.chevron_left,
                         ),
                       ),
+
                       Text(
                         '${currentMonth.year}年'
                         '${currentMonth.month}月',
@@ -2984,6 +3145,7 @@ class _CalendarPageState
                               FontWeight.bold,
                         ),
                       ),
+
                       IconButton(
                         onPressed:
                             nextMonth,
@@ -2994,6 +3156,7 @@ class _CalendarPageState
                     ],
                   ),
                 ),
+
                 SizedBox(
                   width: double.infinity,
                   child: Row(
@@ -3036,9 +3199,11 @@ class _CalendarPageState
                     ],
                   ),
                 ),
+
                 const SizedBox(
                   height: 4,
                 ),
+
                 Expanded(
                   child:
                       SingleChildScrollView(
@@ -3056,6 +3221,7 @@ class _CalendarPageState
                 ),
               ],
             ),
+
       floatingActionButton:
           FloatingActionButton(
         onPressed: () {
