@@ -72,7 +72,9 @@ class _AuthPageState extends State<AuthPage> {
     final password = passwordController.text;
 
     if (email.isEmpty || password.isEmpty) {
-      showMessage('メールアドレスとパスワードを入力してください');
+      showMessage(
+        'メールアドレスとパスワードを入力してください',
+      );
       return;
     }
 
@@ -82,70 +84,90 @@ class _AuthPageState extends State<AuthPage> {
 
     try {
       if (isLogin) {
-  final response =
-      await Supabase.instance.client.auth.signInWithPassword(
-    email: email,
-    password: password,
-  );
+        final response =
+            await Supabase.instance.client.auth.signInWithPassword(
+          email: email,
+          password: password,
+        );
 
-  final user = response.user;
+        final user = response.user;
 
-  // メール認証が完了しているか確認
-  if (user == null || user.emailConfirmedAt == null) {
-    await Supabase.instance.client.auth.signOut();
+        // メール認証が完了しているか確認
+        if (user == null || user.emailConfirmedAt == null) {
+          await Supabase.instance.client.auth.signOut();
 
-    if (!mounted) return;
+          if (!mounted) return;
 
-    showMessage(
-      'メールアドレスの確認が必要です。\n'
-      '受信した確認メールのリンクを押してからログインしてください。',
-    );
-    return;
+          showMessage(
+            'メールアドレスの確認が必要です。\n'
+            '受信した確認メールのリンクを押してからログインしてください。',
+          );
+          return;
+        }
+
+        TextInput.finishAutofillContext(
+          shouldSave: true,
+        );
+
+        if (!mounted) return;
+
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => const HomePage(),
+          ),
+        );
+      } else {
+        final response =
+            await Supabase.instance.client.auth.signUp(
+          email: email,
+          password: password,
+        );
+
+        TextInput.finishAutofillContext(
+          shouldSave: true,
+        );
+
+        if (!mounted) return;
+
+        if (response.user != null &&
+            response.session == null) {
+          showMessage(
+            '登録しました。\n'
+            '入力したメールアドレスに確認メールを送信しました。\n'
+            'メール内のリンクを押して認証してください。',
+          );
+        } else {
+          showMessage(
+            'アカウントを作成しました。\n'
+            'メールアドレスの確認が必要です。',
+          );
+        }
+
+        setState(() {
+          isLogin = true;
+        });
+      }
+    } on AuthException catch (e) {
+      if (!mounted) return;
+
+      showMessage(
+        '認証に失敗しました\n${e.message}',
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      showMessage(
+        'エラーが発生しました: $e',
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
   }
 
-  TextInput.finishAutofillContext(
-    shouldSave: true,
-  );
-
-  if (!mounted) return;
-
-  Navigator.of(context).pushReplacement(
-    MaterialPageRoute(
-      builder: (_) => const HomePage(),
-    ),
-  );
-} else {
-  final response =
-      await Supabase.instance.client.auth.signUp(
-    email: email,
-    password: password,
-  );
-
-  TextInput.finishAutofillContext(
-    shouldSave: true,
-  );
-
-  if (!mounted) return;
-
-  if (response.user != null &&
-      response.session == null) {
-    showMessage(
-      '登録しました。\n'
-      '入力したメールアドレスに確認メールを送信しました。\n'
-      'メール内のリンクを押して認証してください。',
-    );
-  } else {
-    showMessage(
-      'アカウントを作成しました。\n'
-      'メールアドレスの確認が必要です。',
-    );
-  }
-
-  setState(() {
-    isLogin = true;
-  });
-}
-}
   void showMessage(String message) {
     if (!mounted) return;
 
@@ -191,7 +213,6 @@ class _AuthPageState extends State<AuthPage> {
                     ),
                     const SizedBox(height: 40),
 
-                    // メールアドレス
                     TextField(
                       controller: emailController,
                       keyboardType:
@@ -213,7 +234,6 @@ class _AuthPageState extends State<AuthPage> {
 
                     const SizedBox(height: 16),
 
-                    // パスワード
                     TextField(
                       controller: passwordController,
                       obscureText: true,
@@ -1409,7 +1429,6 @@ class _EditTaskDialogState
           child: const Text('キャンセル'),
         ),
 
-        // 削除
         TextButton(
           onPressed: () async {
             final confirmed =
@@ -1599,9 +1618,6 @@ class _CalendarPageState
     );
   }
 
-  // ==========================================
-  // 日本の祝日判定
-  // ==========================================
   bool isJapaneseHoliday(DateTime date) {
     final year = date.year;
     final month = date.month;
@@ -1644,7 +1660,6 @@ class _CalendarPageState
       }
     }
 
-    // 成人の日
     if (month == 1 &&
         date.weekday == DateTime.monday &&
         day >= 8 &&
@@ -1652,7 +1667,6 @@ class _CalendarPageState
       return true;
     }
 
-    // 海の日
     if (month == 7 &&
         date.weekday == DateTime.monday &&
         day >= 15 &&
@@ -1660,7 +1674,6 @@ class _CalendarPageState
       return true;
     }
 
-    // 敬老の日
     if (month == 9 &&
         date.weekday == DateTime.monday &&
         day >= 15 &&
@@ -1668,7 +1681,6 @@ class _CalendarPageState
       return true;
     }
 
-    // スポーツの日
     if (month == 10 &&
         date.weekday == DateTime.monday &&
         day >= 8 &&
@@ -1676,7 +1688,6 @@ class _CalendarPageState
       return true;
     }
 
-    // 振替休日
     if (date.weekday == DateTime.monday) {
       final previousDay =
           date.subtract(
@@ -1690,7 +1701,6 @@ class _CalendarPageState
       }
     }
 
-    // 国民の休日
     final previousDay =
         date.subtract(
       const Duration(days: 1),
