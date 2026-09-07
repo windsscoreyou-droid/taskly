@@ -40,22 +40,14 @@ class AuthGate extends StatelessWidget {
     final session =
         Supabase.instance.client.auth.currentSession;
 
-@override
-Widget build(BuildContext context) {
-  final session =
-      Supabase.instance.client.auth.currentSession;
+    final user =
+        Supabase.instance.client.auth.currentUser;
 
-  final user =
-      Supabase.instance.client.auth.currentUser;
-
-  if (session != null &&
-      user != null &&
-      user.emailConfirmedAt != null) {
-    return const HomePage();
-  }
-
-  return const AuthPage();
-}
+    if (session != null &&
+        user != null &&
+        user.emailConfirmedAt != null) {
+      return const HomePage();
+    }
 
     return const AuthPage();
   }
@@ -153,7 +145,7 @@ class _AuthPageState extends State<AuthPage> {
     isLogin = true;
   });
 }
-
+}
   void showMessage(String message) {
     if (!mounted) return;
 
